@@ -1,0 +1,15 @@
+---
+description: Tab stacks, Settings/Now Playing modals, and mini player
+globs: src/app/**/*.ts,src/app/**/*.tsx
+alwaysApply: false
+---
+
+# Navigation
+
+Root Stack: `(tabs)` plus full-screen modals. Follow `.agents/skills/expo-router/SKILL.md`. Use JS `Tabs` from `expo-router` (not `NativeTabs`) so Simple mode can restyle the tab bar. Custom `tabBar` via `@/tw`. `src/app/` is routes and layouts only — screens live in `src/screens/`.
+
+- **Tabs:** Home and Library. Each owns a nested Stack; pushes stay in that tab.
+- **Tab press:** every tab bar tap — including switching — lands on that tab’s root. Nested screens in that tab are discarded.
+- **Settings:** tab bar item presents a full-screen modal. No tab bar, no mini player.
+- **Mini player:** above the tab items in the custom `tabBar` while audio is playing, on Home/Library and nested screens only. Hidden on Settings and Now Playing. Tap opens the Now Playing modal.
+- **Now Playing:** full-screen modal (no tab bar).

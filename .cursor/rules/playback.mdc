@@ -18,7 +18,6 @@ Now Playing calls the engine, not Expo APIs: prev, next, −30s, play/pause, +30
 
 Sleep timer: end of this track, remaining tracks through end of album, or hours+minutes (no seconds). Pause via the engine. Note: Track/album timer options use `durationSec` on recorded tracks (`sehaj_paath`, `audiobook`). `radio` has live tracks, which have no duration — hide those options for live tracks.
 
-Downloads: `@kesha-antonov/react-native-background-downloader` (`skipMmkvDependency: true` with MMKV). One Notifee notification per batch. Prefer local file if present, else stream. After reinstall, restore a cloud **wanted-offline** id list and re-download.
+Downloads: `@kesha-antonov/react-native-background-downloader` (`skipMmkvDependency: true` with MMKV). Batch album or per track; re-attach after process death. One Notifee progress notification per batch album download; separate notifications for individual track downloads. Prefer local file if present, else stream. Offline banner when the network is gone. After reinstall, give user option restore the cloud **wanted-offline** id list to re-download.
 
-Car V1: lock screen / notification / Bluetooth Now Playing from the adapter. Car browse/queue is 
-later.
+Car V1: lock screen / notification / Bluetooth Now Playing from the adapter. Car browse/queue is later (not V1).

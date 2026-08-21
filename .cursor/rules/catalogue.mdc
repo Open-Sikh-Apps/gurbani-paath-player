@@ -8,7 +8,7 @@ alwaysApply: false
 
 Editorial strings use `L10nText` (`en` required; any other locale key optional). Resolve `locale → en → first key`. Chrome copy (Play, Settings) belongs in i18next, not the catalogue. Validate JSON with Valibot in `src/catalogue/schema.ts`.
 
-Cursor rule `globs` split on commas, so do not use `{ts,tsx}` braces. List each extension as its own glob.
+Host: Cloudflare Pages. Read `catalogue.version.json`, then `catalogue.json` on mismatch. Cache on disk. Refresh on cold start, Home pull-to-refresh, and Home overflow. The app never calls Sanity.
 
 ```ts
 type L10nText = { en: string; [locale: string]: string };
