@@ -1,0 +1,22 @@
+---
+description: Locked V1 stack, hosting, and module boundaries for Gurbani Paath Player
+alwaysApply: true
+---
+
+# Architecture
+
+Expo SDK 57. Read https://docs.expo.dev/versions/v57.0.0/ before adding APIs. Follow `ROADMAP.md` for V1 phase order. Community app: no IAP, no EAS. React Compiler on (`experiments.reactCompiler`).
+
+- Routes in `src/app/` (Expo Router). Screens in `src/screens/`, reusable UI in `src/components/`.
+- **UI styling:** NativeWind v5 + Tailwind CSS v4 + `react-native-css`. Follow `.agents/skills/expo-tailwind-setup/SKILL.md`. Import primitives from `@/tw` and style with `className`. Light/dark tokens live in CSS `@theme` (`src/global.css`). Screens and shared UI must not use `StyleSheet.create` or raw hex. Install in Phase 1; do not add a second styling system (`@expo/ui` is for native controls only, not layout).
+- Local builds only: `npx expo prebuild`, `npx expo run:ios` / `run:android`. Do not add `eas.json` or EAS workflows.
+- **Player:** SDK 57 `expo-audio` (`AudioPlaylist`, `loop: "none"`). Lock screen, notification, Bluetooth Now Playing.
+- Put all audio behind `src/playback/`: a `PlayerEngine` interface plus one adapter (`expo-audio`). Screens and Zustand talk only to that module. Swapping to another library later means a new adapter file, not UI rewrites. Do not import `expo-audio` outside `src/playback/`.
+- Do **not** add `@rntp/player` / Track Player v5.
+- **Media files:** Cloudflare R2 + custom-domain CDN (`audio/`, `images/`). Track files stay under 512 MB. Immutable object URLs; new `trackId` if a file changes.
+- **Catalogue JSON:** Cloudflare Pages (`catalogue.version.json` then `catalogue.json` on mismatch). Cache on disk. Refresh on cold start, Home pull-to-refresh, and Home overflow.
+- **Sanity:** editor only. The app never calls Sanity. Publish via webhook → Pages JSON.
+- **State:** Zustand + MMKV. Local-first. Optional Google Sign-In lives in **Settings → Cloud sync** only. No wizard auth. No anonymous Firebase on launch. Cloud writes on pause / background / ~1min debounce — not every tick.
+- Screens import `playback`, `catalogue`, `downloads`, `sync` modules. They must not import `expo-audio`, Notifee, Firebase, or Sanity directly.
+
+No photos of Gursikhs. Home hero is `catalogue.heroImageUrl` (Maharaj’s saroop).

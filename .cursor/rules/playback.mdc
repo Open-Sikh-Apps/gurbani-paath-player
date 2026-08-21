@@ -1,0 +1,24 @@
+---
+description: Queue, per-album resume, downloads, sleep timer, and STTM
+globs: src/playback/**/*.ts,src/playback/**/*.tsx,src/downloads/**/*.ts,src/downloads/**/*.tsx,src/sync/**/*.ts,src/sync/**/*.tsx,**/sleep-timer*.ts
+alwaysApply: false
+---
+
+# Playback and downloads
+
+`src/playback/` owns the player. Export a `PlayerEngine` (load album, play, pause, next, previous, seekBy ±30, skipTo, subscribe to status). V1 adapter: `expo-audio` `AudioPlaylist` with `loop: "none"`. Do not import `expo-audio` outside this folder. Do not add a second adapter in V1.
+
+Queue is a **single album**; playback **stops at the last track**. Resume **per album id** only:
+
+```ts
+{ [albumId]: { trackId: string; positionSec: number; updatedAt: number } }
+```
+
+Now Playing calls the engine, not Expo APIs: prev, next, −30s, play/pause, +30s. Second row: sleep timer, add bookmark, bookmarks, read along (`https://sttm.co/{currenScripture.sttmCoSlug}/{currentTrack.startAng}`). Hide read along if the current track has no `startAng` or the current scripture has no `sttmCoSlug`.
+
+Sleep timer: end of this track, remaining tracks through end of album, or hours+minutes (no seconds). Pause via the engine. Note: Track/album timer options use `durationSec` on recorded tracks (`sehaj_paath`, `audiobook`). `radio` has live tracks, which have no duration — hide those options for live tracks.
+
+Downloads: `@kesha-antonov/react-native-background-downloader` (`skipMmkvDependency: true` with MMKV). One Notifee notification per batch. Prefer local file if present, else stream. After reinstall, restore a cloud **wanted-offline** id list and re-download.
+
+Car V1: lock screen / notification / Bluetooth Now Playing from the adapter. Car browse/queue is 
+later.

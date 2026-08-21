@@ -1,0 +1,184 @@
+{
+  "version": 1,
+  "heroImageUrl": "https://upload.wikimedia.org/wikipedia/commons/a/ad/Guru_Granth_Sahib.jpg",
+  "authors": [],
+  "reciters": [
+    {
+      "id": "3bd6cc33-926d-4a90-943b-67d2d81dcde0",
+      "name": {
+        "en": "Bhai Mehnga Singh Ji",
+        "pa": "ਭਾਈ ਮਹਿੰਗਾ ਸਿੰਘ ਜੀ"
+      }
+    },
+    {
+      "id": "2c116cbd-0991-4c30-ae8d-3201e9cdec0e",
+      "name": {
+        "en": "Bhai Bhupinder Singh (Damdami Taksal wale)",
+        "pa": "ਭਾਈ ਭੁਪਿੰਦਰ ਸਿੰਘ (ਦਮਦਮੀ ਟਕਸਾਲ ਵਾਲੇ)"
+      }
+    }
+  ],
+  "scriptures": [
+    {
+      "id": "f73973d6-8bd7-4972-a0b7-a951ee6d6bf1",
+      "name": {
+        "en": "Sri Guru Granth Sahib Ji",
+        "pa": "ਸ੍ਰੀ ਗੁਰੂ ਗ੍ਰੰਥ ਸਾਹਿਬ ਜੀ"
+      },
+      "sttmCoSlug": "g"
+    }
+  ],
+  "collections": [
+    {
+      "id": "78670ce8-29ad-4a2c-9ead-5504755756bc",
+      "kind": "sehaj_paath",
+      "reciterId": "3bd6cc33-926d-4a90-943b-67d2d81dcde0",
+      "languages": ["pa"],
+      "scriptureId": "f73973d6-8bd7-4972-a0b7-a951ee6d6bf1",
+      "downloadable": true,
+      "tracks": [
+        {
+          "kind": "sehaj_paath",
+          "id": "5073ed61-e809-4fc1-a820-f97ff9455805",
+          "title": {
+            "en": "Ang 1 to Ang 13",
+            "pa": "ਅੰਗ 1 ਤੋਂ ਅੰਗ 13"
+          },
+          "url": "https://www.gurmatveechar.com/audios/Gurbani_Ucharan/Bhai_Mehnga_Singh/Giani.Mehnga.Singh--Guru.Granth.Sahib.Ji.Sehaj.Paath.Ang.0001.to.Ang.0013.mp3",
+          "durationSec": 2586,
+          "startAng": 1,
+          "endAng": 13
+        },
+        {
+          "kind": "sehaj_paath",
+          "id": "6ad08da8-cb17-4372-bba9-31b623281bf5",
+          "title": {
+            "en": "Ang 14 to Ang 22",
+            "pa": "ਅੰਗ 14 ਤੋਂ ਅੰਗ 22"
+          },
+          "url": "https://www.gurmatveechar.com/audios/Gurbani_Ucharan/Bhai_Mehnga_Singh/Giani.Mehnga.Singh--Guru.Granth.Sahib.Ji.Sehaj.Paath.Ang.0014.to.Ang.0022.mp3",
+          "durationSec": 1674,
+          "startAng": 14,
+          "endAng": 22
+        },
+        {
+          "kind": "sehaj_paath",
+          "id": "78980b33-e5ef-4ece-9a08-12d8d256cdb4",
+          "title": {
+            "en": "Ang 22 to Ang 28",
+            "pa": "ਅੰਗ 22 ਤੋਂ ਅੰਗ 28"
+          },
+          "url": "https://www.gurmatveechar.com/audios/Gurbani_Ucharan/Bhai_Mehnga_Singh/Giani.Mehnga.Singh--Guru.Granth.Sahib.Ji.Sehaj.Paath.Ang.0022.to.Ang.0028.mp3",
+          "durationSec": 1250,
+          "startAng": 22,
+          "endAng": 28
+        }
+      ]
+    },
+    {
+      "id": "ae8b0d5f-1bb0-4944-a2de-417d14a1106a",
+      "kind": "sehaj_paath",
+      "reciterId": "2c116cbd-0991-4c30-ae8d-3201e9cdec0e",
+      "languages": ["pa"] ,
+      "scriptureId": "f73973d6-8bd7-4972-a0b7-a951ee6d6bf1",
+      "downloadable": true,
+      "tracks": [
+        {
+          "kind": "sehaj_paath",
+          "id": "ccac6065-be53-4e50-b313-9c6d1800ff52",
+          "title": {
+            "en": "Ang 1 to Ang 5",
+            "pa": "ਅੰਗ 1 ਤੋਂ ਅੰਗ 5"
+          },
+          "url": "https://www.gurmatveechar.com/audios/Gurbani_Ucharan/Giani_Bhupinder_Singh_%28Damdami_Taksal_wale%29/Sri_Guru_Granth_Sahib_Sehaj_Paath/Giani.Bhupinder.Singh.%28Damdami.Taksal.wale%29--Sri.Guru.Granth.Sahib.Ji.Paath.Part.001.mp3",
+          "durationSec": 1250,
+          "startAng": 1,
+          "endAng": 5
+        },
+        {
+          "kind": "sehaj_paath",
+          "id": "65e4436d-1e13-48ca-8294-d336225015cc",
+          "title": {
+            "en": "Ang 6 to Ang 12",
+            "pa": "ਅੰਗ 6 ਤੋਂ ਅੰਗ 12"
+          },
+          "url": "https://www.gurmatveechar.com/audios/Gurbani_Ucharan/Giani_Bhupinder_Singh_%28Damdami_Taksal_wale%29/Sri_Guru_Granth_Sahib_Sehaj_Paath/Giani.Bhupinder.Singh.%28Damdami.Taksal.wale%29--Sri.Guru.Granth.Sahib.Ji.Paath.Part.002.mp3",
+          "durationSec": 1066,
+          "startAng": 6,
+          "endAng": 12
+        },
+        {
+          "kind": "sehaj_paath",
+          "id": "57133729-237d-4f93-af94-3f94fc93b65a",
+          "title": {
+            "en": "Ang 13 to Ang 18",
+            "pa": "ਅੰਗ 13 ਤੋਂ ਅੰਗ 18"
+          },
+          "url": "https://www.gurmatveechar.com/audios/Gurbani_Ucharan/Giani_Bhupinder_Singh_%28Damdami_Taksal_wale%29/Sri_Guru_Granth_Sahib_Sehaj_Paath/Giani.Bhupinder.Singh.%28Damdami.Taksal.wale%29--Sri.Guru.Granth.Sahib.Ji.Paath.Part.003.mp3",
+          "durationSec": 1051,
+          "startAng": 13,
+          "endAng": 18
+        }
+      ]
+    }
+  ],
+  "resourceSections": [
+    {
+      "id": "f6b53aed-f30e-4ba1-8282-18810c0640af",
+      "title": { "en": "Gurbani", "pa": "ਗੁਰਬਾਣੀ" }
+    },
+    {
+      "id": "fa3bc241-5e82-481f-9d12-e48a1183f222",
+      "title": { "en": "Media", "pa": "ਮੀਡੀਆ" }
+    },
+    {
+      "id": "973d9b4c-31c5-4948-aba9-2a8cf6165b08",
+      "title": { "en": "Thanks", "pa": "ਧੰਨਵਾਦ" }
+    }
+  ],
+  "resources": [
+    {
+      "id": "fc3d677d-0828-482c-967c-e4f5fa47e283",
+      "sectionId": "f6b53aed-f30e-4ba1-8282-18810c0640af",
+      "title": { "en": "SikhiToTheMax", "pa": "ਸਿੱਖੀ ਟੂ ਦ ਮੈਕਸ" },
+      "description": {
+        "en": "Read along on the web at sttm.co.",
+        "pa": "ਵੈੱਬ ਤੇ sttm.co ਉੱਤੇ ਨਾਲ ਨਾਲ ਪੜ੍ਹੋ।"
+      },
+      "url": "https://sttm.co"
+    },
+    {
+      "id": "c0b8a140-a76d-4fb7-a159-f46264403808",
+      "sectionId": "f6b53aed-f30e-4ba1-8282-18810c0640af",
+      "title": { "en": "SikhiToTheMax app", "pa": "ਸਿੱਖੀ ਟੂ ਦ ਮੈਕਸ ਐਪ" },
+      "description": {
+        "en": "The SikhiToTheMax mobile app for reading Gurbani.",
+        "pa": "ਗੁਰਬਾਣੀ ਪੜ੍ਹਨ ਲਈ ਸਿੱਖੀ ਟੂ ਦ ਮੈਕਸ ਮੋਬਾਈਲ ਐਪ।"
+      },
+      "url": "https://sharecharityuk.com/sttmhelp/"
+    },
+    {
+      "id": "75e82ffc-42ef-4e4c-b8f6-d687215add27",
+      "sectionId": "fa3bc241-5e82-481f-9d12-e48a1183f222",
+      "title": { "en": "Gurbani Sewa", "pa": "ਗੁਰਬਾਣੀ ਸੇਵਾ" },
+      "description": {
+        "en": "Gurbani katha, keertan, and other media from gurbanisewa.org.",
+        "pa": "gurbanisewa.org ਤੋਂ ਗੁਰਬਾਣੀ ਕਥਾ, ਕੀਰਤਨ ਅਤੇ ਹੋਰ ਮੀਡੀਆ।"
+      },
+      "url": "https://www.gurbanisewa.org"
+    },
+    {
+      "id": "a42b22dc-3f2c-4b6e-9ca3-7b50cd28bdbf",
+      "sectionId": "973d9b4c-31c5-4948-aba9-2a8cf6165b08",
+      "title": {
+        "en": "Thanks to Gurbani Sewa",
+        "pa": "ਗੁਰਬਾਣੀ ਸੇਵਾ ਦਾ ਧੰਨਵਾਦ"
+      },
+      "description": {
+        "en": "Special thanks to www.gurbanisewa.org for providing audio files.",
+        "pa": "ਆਡੀਓ ਫਾਈਲਾਂ ਦੇਣ ਲਈ www.gurbanisewa.org ਦਾ ਵਿਸ਼ੇਸ਼ ਧੰਨਵਾਦ।"
+      },
+      "url": "https://www.gurbanisewa.org"
+    }
+  ]
+}

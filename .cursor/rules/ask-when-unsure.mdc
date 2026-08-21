@@ -1,0 +1,8 @@
+---
+description: Ask the user instead of guessing when a requirement is unclear
+alwaysApply: true
+---
+
+# Ask when unsure
+
+If a requirement, name, URL, translation, or design choice is ambiguous, **ask before assuming**.
