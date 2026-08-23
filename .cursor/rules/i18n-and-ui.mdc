@@ -8,7 +8,9 @@ alwaysApply: false
 
 - Every user-facing string goes through i18next. No hardcoded English in screens.
 - **NativeWind v5** is required for UI styling (Tailwind CSS v4 + `react-native-css`). Follow `.agents/skills/expo-tailwind-setup/SKILL.md` when installing. Import `View`, `Text`, `Pressable`, `ScrollView`, and `Image` from `@/tw`, not `react-native`, so `className` works.
-- Theme follows OS `Appearance` on first launch; user override in Settings. Light/dark tokens in `src/global.css` `@theme` — no raw hex and no `StyleSheet.create` in screens. The Phase 0 catalogue smoke screen may keep StyleSheet until Phase 1 replaces it.
+- Theme follows OS `Appearance` on first launch; user override in Settings. Palette hex lives only in `src/theme/colors.ts`. Metro generates `src/theme/palette.generated.css` for NativeWind `@theme` (`dark:` pairs). JS ColorValues (Ionicons, headers, SystemUI) use `useThemeColors()`. Use `ui` from `@/tw` for `className`. NativeWind v5 on iOS/Android does not resolve CSS `light-dark()`. After editing `colors.ts`, restart Metro. No raw hex and no `StyleSheet.create` in screens.
+- Locale preference is `system` or a BCP-47 code from the registry. `system` follows the device via `expo-localization` (fallback `en`). Settings can pick System; the wizard still asks for an explicit language. Always resolve before i18n, fonts, or catalogue `resolveL10n`.
+- Native app name (home screen label) lives in `src/i18n/native-metadata/{locale}.json` and `expo.locales` in app config — not i18next. After changing those files, run a new native prebuild/build.
 - **Simple mode**: ≥48px hit targets, larger type, less chrome — including the JS tab bar. Off by default. First-run wizard is two steps: (1) language, (2) Simple mode. Language first so step 2 is localized. Same values later in Settings and Home overflow.
 - **Keep screen on while playing** is a separate Settings toggle.
 - Use `@shopify/flash-list` for album track lists, Library, and any list that can grow to hundreds of rows.

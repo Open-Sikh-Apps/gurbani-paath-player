@@ -1,6 +1,6 @@
 import { useEffect, useState } from "react";
-import { ScrollView, StyleSheet, Text, View } from "react-native";
-import { Image } from "expo-image";
+import { useTranslation } from "react-i18next";
+
 import {
   getReciterById,
   getSehajPaathCollections,
@@ -8,10 +8,14 @@ import {
   resolveL10n,
   type Catalogue,
 } from "@/catalogue";
-
-const PREVIEW_LOCALE = "pa";
+import { useChrome } from "@/hooks/use-chrome";
+import { useResolvedLocale } from "@/hooks/use-resolved-locale";
+import { Image, ScrollView, Text, View, cn, ui } from "@/tw";
 
 export function CataloguePreviewScreen() {
+  const { t } = useTranslation();
+  const { body, text } = useChrome();
+  const locale = useResolvedLocale();
   const [catalogue, setCatalogue] = useState<Catalogue | null>(null);
   const [error, setError] = useState<string | null>(null);
 
@@ -35,86 +39,68 @@ export function CataloguePreviewScreen() {
 
   if (error) {
     return (
-      <View style={styles.centered}>
-        <Text>{error}</Text>
+      <View className={cn("flex-1 items-center justify-center px-6", ui.page)}>
+        <Text className={cn("text-center", ui.text, body)}>
+          {t("catalogue.loadError")}
+        </Text>
       </View>
     );
   }
 
   if (!catalogue) {
-    return <View style={styles.centered} />;
+    return <View className={cn("flex-1", ui.page)} />;
   }
 
   const albums = getSehajPaathCollections(catalogue);
 
   return (
-    <ScrollView contentContainerStyle={styles.content}>
-      <Text style={styles.fateh}>
-        Waheguru Ji Ka Khalsa, Waheguru Ji Ki Fateh!
-      </Text>
+    <ScrollView
+      className={cn("flex-1", ui.page)}
+      contentContainerClassName="gap-3 px-6 py-6"
+    >
+      <Text className={cn("mb-2", ui.text, body)}>{t("home.fateh")}</Text>
       <Image
-          source={{
-            uri: catalogue.heroImageUrl,
-            headers: {
-              'User-Agent': 'GurbaniPaathPlayerOffline/1.0 (cingh.jasdeep@gmail.com)' 
-            }
-           }}
-          style={styles.hero}
-          accessibilityIgnoresInvertColors
-        />
-      <Text>{catalogue.version}</Text>
+        source={{
+          uri: catalogue.heroImageUrl,
+          headers: {
+            "User-Agent":
+              "GurbaniPaathPlayerOffline/1.0 (cingh.jasdeep@gmail.com)",
+          },
+        }}
+        className="aspect-4/3 w-full rounded-2xl object-cover"
+        accessibilityIgnoresInvertColors
+      />
+      <Text className={cn(ui.muted, text)}>
+        {t("catalogue.version", { version: catalogue.version })}
+      </Text>
       {albums.map((album) => {
         const reciter = getReciterById(catalogue, album.reciterId);
         const heading = reciter?.name;
         return (
-          <View key={album.id} style={styles.block}>
+          <View key={album.id} className="mt-3 gap-1">
             {heading ? (
-              <Text style={styles.heading}>
-                {resolveL10n(heading, PREVIEW_LOCALE)}
+              <Text className={cn("font-semibold", ui.text, text)}>
+                {resolveL10n(heading, locale)}
               </Text>
             ) : null}
-            <Text>{album.tracks.length}</Text>
+            <Text className={cn(ui.muted, text)}>
+              {t("catalogue.trackCount", { count: album.tracks.length })}
+            </Text>
             {album.tracks.map((track) => (
-              <Text key={track.id}>
-                {resolveL10n(track.title, PREVIEW_LOCALE)}
+              <Text key={track.id} className={cn(ui.text, text)}>
+                {resolveL10n(track.title, locale)}
               </Text>
             ))}
           </View>
         );
       })}
-      <View style={styles.block}>
+      <View className="mt-3 gap-1">
         {catalogue.resources.map((resource) => (
-          <Text key={resource.id}>
-            {resolveL10n(resource.title, PREVIEW_LOCALE)}
+          <Text key={resource.id} className={cn(ui.text, text)}>
+            {resolveL10n(resource.title, locale)}
           </Text>
         ))}
       </View>
     </ScrollView>
   );
 }
-
-const styles = StyleSheet.create({
-  centered: {
-    flex: 1,
-    alignItems: "center",
-    justifyContent: "center",
-  },
-  content: {
-    padding: 24,
-    gap: 12,
-  },
-  fateh: {
-    marginBottom: 8,
-  },
-  hero: {
-    width: "100%",
-    aspectRatio: 4 / 3,
-  },
-  block: {
-    gap: 4,
-    marginTop: 12,
-  },
-  heading: {
-    fontWeight: "600",
-  },
-});

@@ -1,0 +1,21 @@
+/* Generated from src/theme/colors.ts. Do not edit. */
+@layer theme {
+  @theme {
+    --color-bg: #F7F0E4;
+    --color-bg-dark: #0F1724;
+    --color-surface: #FFF8EE;
+    --color-surface-dark: #1A2436;
+    --color-text: #1A2744;
+    --color-text-dark: #F7F0E4;
+    --color-text-muted: #5A6578;
+    --color-text-muted-dark: #A8B0BE;
+    --color-accent: #C65A12;
+    --color-accent-dark: #E8893A;
+    --color-accent-fg: #FFF8EE;
+    --color-accent-fg-dark: #0F1724;
+    --color-tab-bar: #FFF8EE;
+    --color-tab-bar-dark: #151E2E;
+    --color-border: #E6D9C6;
+    --color-border-dark: #2A3648;
+  }
+}

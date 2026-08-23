@@ -47,3 +47,5 @@ Extra features
 - Radios section  
 - A web compatible version  
   - without downloads
+- Add to home screen (album(resumes), track(resumes or streams))
+- Option to share mp3 file directly for downloaded tracks

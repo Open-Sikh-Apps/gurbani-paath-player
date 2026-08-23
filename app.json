@@ -6,13 +6,21 @@
     "version": "1.0.0",
     "orientation": "portrait",
     "icon": "./assets/icon.png",
-    "userInterfaceStyle": "light",
+    "userInterfaceStyle": "automatic",
     "experiments": {
       "typedRoutes": true,
       "reactCompiler": true
     },
+    "locales": {
+      "en": "./src/i18n/native-metadata/en.json",
+      "pa": "./src/i18n/native-metadata/pa.json"
+    },
     "ios": {
-      "supportsTablet": true
+      "supportsTablet": true,
+      "bundleIdentifier": "com.opensikhapps.gurbanipaathplayer",
+      "infoPlist": {
+        "CFBundleAllowMixedLocalizations": true
+      }
     },
     "android": {
       "adaptiveIcon": {
@@ -30,7 +38,15 @@
     "plugins": [
       "expo-router",
       "expo-status-bar",
-      "expo-image"
-    ]
+      "expo-image",
+      "expo-font",
+      "expo-localization"
+    ],
+    "extra": {
+      "router": {},
+      "eas": {
+        "projectId": "542f5172-9afe-47ed-b04e-4d625c54765e"
+      }
+    }
   }
 }

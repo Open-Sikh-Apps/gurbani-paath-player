@@ -1,0 +1,8 @@
+{
+  "ios": {
+    "CFBundleDisplayName": "Gurbani Paath Player Offline"
+  },
+  "android": {
+    "app_name": "Gurbani Paath Player Offline"
+  }
+}

@@ -1,0 +1,52 @@
+{
+  "tabs": {
+    "home": "Home",
+    "library": "Library",
+    "settings": "Settings"
+  },
+  "wizard": {
+    "languageTitle": "Choose your language",
+    "languageSubtitle": "You can change this later in Settings.",
+    "continue": "Continue",
+    "simpleModeTitle": "Simple mode",
+    "simpleModeBody": "Larger buttons and text. Helpful for elders and while driving. You can change this later in Settings.",
+    "simpleModeOn": "Use Simple mode",
+    "simpleModeOff": "Use standard layout",
+    "done": "Get started"
+  },
+  "settings": {
+    "title": "Settings",
+    "language": "Language",
+    "languageSystem": "System",
+    "simpleMode": "Simple mode",
+    "simpleModeHint": "Larger buttons and text",
+    "theme": "Theme",
+    "themeSystem": "System",
+    "themeLight": "Light",
+    "themeDark": "Dark",
+    "close": "Close"
+  },
+  "library": {
+    "title": "Library",
+    "placeholder": "Albums you add to your library will appear here."
+  },
+  "nowPlaying": {
+    "title": "Now Playing",
+    "placeholder": "Playback controls will appear here."
+  },
+  "home": {
+    "title": "Home",
+    "fateh": "Waheguru Ji Ka Khalsa, Waheguru Ji Ki Fateh"
+  },
+  "album": {
+    "title": "Album",
+    "placeholder": "Album {{albumId}} will open here.",
+    "trackPlaceholder": "Track {{trackId}} in album {{albumId}} will open here."
+  },
+  "catalogue": {
+    "loadError": "Could not load the catalogue.",
+    "version": "Version {{version}}",
+    "trackCount_one": "{{count}} track",
+    "trackCount_other": "{{count}} tracks"
+  }
+}

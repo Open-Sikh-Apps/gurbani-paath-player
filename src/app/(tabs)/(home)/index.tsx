@@ -1,5 +1,5 @@
 import { CataloguePreviewScreen } from "@/screens/catalogue-preview";
 
-export default function Index() {
+export default function HomeRoute() {
   return <CataloguePreviewScreen />;
 }

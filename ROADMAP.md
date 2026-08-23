@@ -17,7 +17,7 @@ Work **one phase at a time**. Extra features (audiobooks, radios, filters, float
 
 ## Phase 2 — Home and play an album
 
-- Home: Maharaj’s saroop + `sehaj_paath` grid (reciter names, no portraits). Cache `heroImageUrl` with `expo-image`.
+- Home: Maharaj’s saroop + `sehaj_paath` list (reciter names, no portraits). Cache `heroImageUrl` with `expo-image`.
 - Catalogue refresh and disk cache per `.cursor/rules/catalogue.mdc`.
 - Playback module per `.cursor/rules/playback.mdc` (play one album; per-album resume).
 
@@ -65,3 +65,5 @@ Work **one phase at a time**. Extra features (audiobooks, radios, filters, float
 - Android floating widget, Siri/Gemini beyond MediaSession play-pause.
 - Web version without offline features.
 - Car dashboard browse/queue
+- Add to home screen (album(resumes), track(resumes or streams))
+- Option to share mp3 file directly for downloaded tracks

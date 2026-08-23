@@ -1,0 +1,52 @@
+{
+  "tabs": {
+    "home": "ਘਰ",
+    "library": "ਲਾਇਬ੍ਰੇਰੀ",
+    "settings": "ਸੈਟਿੰਗਾਂ"
+  },
+  "wizard": {
+    "languageTitle": "ਆਪਣੀ ਭਾਸ਼ਾ ਚੁਣੋ",
+    "languageSubtitle": "ਤੁਸੀਂ ਇਹ ਬਾਅਦ ਵਿੱਚ ਸੈਟਿੰਗਾਂ ਵਿੱਚ ਬਦਲ ਸਕਦੇ ਹੋ।",
+    "continue": "ਅੱਗੇ ਵਧੋ",
+    "simpleModeTitle": "ਸਰਲ ਮੋਡ",
+    "simpleModeBody": "ਵੱਡੇ ਬਟਨ ਅਤੇ ਲਿਖਤ। ਵੱਡੀਆਂ ਉਮਰਾਂ ਅਤੇ ਗੱਡੀ ਚਲਾਉਂਦਿਆਂ ਲਈ ਲਾਭਦਾਇਕ। ਤੁਸੀਂ ਇਹ ਬਾਅਦ ਵਿੱਚ ਸੈਟਿੰਗਾਂ ਵਿੱਚ ਬਦਲ ਸਕਦੇ ਹੋ।",
+    "simpleModeOn": "ਸਰਲ ਮੋਡ ਵਰਤੋ",
+    "simpleModeOff": "ਆਮ ਲੇਆਉਟ ਵਰਤੋ",
+    "done": "ਸ਼ੁਰੂ ਕਰੋ"
+  },
+  "settings": {
+    "title": "ਸੈਟਿੰਗਾਂ",
+    "language": "ਭਾਸ਼ਾ",
+    "languageSystem": "ਸਿਸਟਮ",
+    "simpleMode": "ਸਰਲ ਮੋਡ",
+    "simpleModeHint": "ਵੱਡੇ ਬਟਨ ਅਤੇ ਲਿਖਤ",
+    "theme": "ਐਪ ਰੰਗ",
+    "themeSystem": "ਸਿਸਟਮ",
+    "themeLight": "ਰੋਸ਼ਨ",
+    "themeDark": "ਗੂੜ੍ਹਾ",
+    "close": "ਬੰਦ ਕਰੋ"
+  },
+  "library": {
+    "title": "ਲਾਇਬ੍ਰੇਰੀ",
+    "placeholder": "ਜੋ ਐਲਬਮਾਂ ਤੁਸੀਂ ਲਾਇਬ੍ਰੇਰੀ ਵਿੱਚ ਜੋੜੋਗੇ, ਉਹ ਇੱਥੇ ਦਿਖਣਗੀਆਂ।"
+  },
+  "nowPlaying": {
+    "title": "ਹੁਣ ਚੱਲ ਰਿਹਾ",
+    "placeholder": "ਪਲੇਬੈਕ ਕੰਟਰੋਲ ਇੱਥੇ ਦਿਖਣਗੇ।"
+  },
+  "home": {
+    "title": "ਘਰ",
+    "fateh": "ਵਾਹਿਗੁਰੂ ਜੀ ਕਾ ਖਾਲਸਾ, ਵਾਹਿਗੁਰੂ ਜੀ ਕੀ ਫਤਿਹ"
+  },
+  "album": {
+    "title": "ਐਲਬਮ",
+    "placeholder": "ਐਲਬਮ {{albumId}} ਇੱਥੇ ਖੁਲ੍ਹੇਗੀ।",
+    "trackPlaceholder": "ਐਲਬਮ {{albumId}} ਵਿਚਲਾ ਟਰੈਕ {{trackId}} ਇੱਥੇ ਖੁਲ੍ਹੇਗਾ।"
+  },
+  "catalogue": {
+    "loadError": "ਕੈਟਾਲਾਗ ਲੋਡ ਨਹੀਂ ਹੋ ਸਕਿਆ।",
+    "version": "ਵਰਜਨ {{version}}",
+    "trackCount_one": "{{count}} ਟਰੈਕ",
+    "trackCount_other": "{{count}} ਟਰੈਕ"
+  }
+}
