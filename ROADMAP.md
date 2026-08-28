@@ -31,17 +31,17 @@ Work **one phase at a time**. Extra features (audiobooks, radios, filters, float
 
 - Bookmarks with optional notes (timestamp + album/track).
 - Sleep timer and read along per `.cursor/rules/playback.mdc`.
-- Library add/remove.
+- Library add/remove album. Library has a link to History in the header. History lists albums sorted by last played (latest first), upto 10 entries; No duplicate album entries in History, show only latest.
 - Resources screen grouped by `ResourceSection`, including gurbanisewa thanks.
 
 ## Phase 5 — Offline downloads
 
-- Batch and per-track downloads, Notifee progress, offline banner — per `.cursor/rules/playback.mdc`.
+- Batch and per-track downloads, react-native-notify-kit progress, offline mode — per `.cursor/rules/playback.mdc`.
 
 ## Phase 6 — Optional cloud sync
 
 - Settings only: Sign in with Google.
-- Sync library, per-album positions, bookmarks, Simple mode, language, theme, wanted-offline ids.
+- Sync library, history, per-album positions, bookmarks, Simple mode, language, theme, wanted-offline ids.
 - Merge last-write-wins (`updatedAt`). Never gate playback on an account.
 
 ## Phase 7 — Sharing
@@ -56,6 +56,12 @@ Work **one phase at a time**. Extra features (audiobooks, radios, filters, float
 - Upload audio/images to R2 (`audio/{collectionId}/{trackId}.mp3`, hero on `images/`).
 - App icons, splash.
 
+## Phase 9 — Consent OTA (JS only)
+
+- Self-hosted `expo-updates` (see `EAS_UPDATE_PROPOSAL.md`). `checkAutomatically: NEVER`.
+- Prompt: Applying the update will stop playback and downloads, so before updating, check whether any playback or downloads are in progress. If playback or downloads are in progress, confirm with the user, then persist the resume state, stop playback, cancel in-flight downloads, and apply the update. If no playback or downloads are in progress, apply the update without confirmation.
+- Does **not** replace the Cloudflare Pages catalogue.
+
 ---
 
 ## Later (not V1)
@@ -66,4 +72,7 @@ Work **one phase at a time**. Extra features (audiobooks, radios, filters, float
 - Web version without offline features.
 - Car dashboard browse/queue
 - Add to home screen (album(resumes), track(resumes or streams))
-- Option to share mp3 file directly for downloaded tracks
+- Option to share mp3 file directly for downloaded tracks (update mp3 name to human friendly before sharing)
+- build app in cloud with Github actions
+- support for Google Cast and AirPlay 
+

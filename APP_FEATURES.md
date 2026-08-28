@@ -15,7 +15,7 @@ Main features:
 - Background playback  
 - Download album/track for Offline playback  
 - Pause and Resume from previous location in an album  
-  - important controls on the now playing screen include prev, next, jump-backward-30-seconds, jump-forward-30-seconds, and a play/pause button in the center.  
+  - important controls on the now playing screen include prev, next, jump-backward-10-seconds, jump-forward-10-seconds, and a play/pause button in the center.  
     - row below with buttons for a sleep timer, an add bookmark, and a see bookmarks button  
   - for read along, a control to jump to the starting ang using a sttm.co link (e.g. for ang 83, https://sttm.co/g/83)  
 - Bookmarks (with notes)  
@@ -41,7 +41,7 @@ Extra features
 - Support different scriptures filter for sehaj paath (like Sri Dasam Granth Sahib)  
 - Play Pause through Gemini (or Siri)  
 - Small Floating widget (android only) (shows up when playing and navigated to home)  
-  - on tapped, should show controls for play/pause, jump 30 sec forward/backward  
+  - on tapped, should show controls for play/pause, jump 10 sec forward/backward  
     - primarily to aid reading along in another app  
 - Audibooks section with similar features   
 - Radios section  
@@ -49,3 +49,5 @@ Extra features
   - without downloads
 - Add to home screen (album(resumes), track(resumes or streams))
 - Option to share mp3 file directly for downloaded tracks
+- build app in cloud with Github actions
+- expo-updates for OTA updates

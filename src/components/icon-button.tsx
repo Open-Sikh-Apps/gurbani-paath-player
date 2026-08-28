@@ -1,0 +1,91 @@
+import { useEffect, useRef, useState } from "react";
+import { Modal, View as RNView, useWindowDimensions } from "react-native";
+
+import { AppIcon, type AppIconName } from "@/components/app-icon";
+import { Pressable, Text, View, cn, ui } from "@/tw";
+
+type IconButtonProps = {
+  name: AppIconName;
+  accessibilityLabel: string;
+  size: number;
+  color: string;
+  onPress: () => void;
+  disabled?: boolean;
+  selected?: boolean;
+  className?: string;
+};
+
+type Anchor = { x: number; y: number; width: number; height: number };
+
+export function IconButton({
+  name,
+  accessibilityLabel,
+  size,
+  color,
+  onPress,
+  disabled,
+  selected,
+  className,
+}: IconButtonProps) {
+  const hostRef = useRef<RNView>(null);
+  const [anchor, setAnchor] = useState<Anchor | null>(null);
+  const { height: windowHeight } = useWindowDimensions();
+
+  useEffect(() => {
+    if (!anchor) {
+      return;
+    }
+    const timer = setTimeout(() => setAnchor(null), 1800);
+    return () => clearTimeout(timer);
+  }, [anchor]);
+
+  function showTooltip(): void {
+    hostRef.current?.measureInWindow((x, y, width, height) => {
+      setAnchor({ x, y, width, height });
+    });
+  }
+
+  const showAbove = anchor != null && anchor.y > windowHeight * 0.7;
+
+  return (
+    <>
+      {/* Native View so measureInWindow works; @/tw View does not forward refs. */}
+      <RNView ref={hostRef} collapsable={false}>
+        <Pressable
+          accessibilityRole="button"
+          accessibilityLabel={accessibilityLabel}
+          accessibilityState={{ disabled, selected }}
+          className={cn("items-center justify-center px-2", disabled && "opacity-40", className)}
+          disabled={disabled}
+          onPress={onPress}
+          onLongPress={showTooltip}
+          delayLongPress={400}
+        >
+          <AppIcon name={name} size={size} color={color} />
+        </Pressable>
+      </RNView>
+      <Modal
+        visible={anchor != null}
+        transparent
+        animationType="fade"
+        onRequestClose={() => setAnchor(null)}
+      >
+        <Pressable className="flex-1" onPress={() => setAnchor(null)}>
+          {anchor ? (
+            <View
+              pointerEvents="none"
+              className={cn("absolute rounded-lg border px-3 py-2", ui.border, ui.surface)}
+              style={{
+                top: showAbove ? anchor.y - 44 : anchor.y + anchor.height + 8,
+                left: Math.max(8, anchor.x + anchor.width / 2 - 80),
+                maxWidth: 220,
+              }}
+            >
+              <Text className={cn("text-center", ui.text)}>{accessibilityLabel}</Text>
+            </View>
+          ) : null}
+        </Pressable>
+      </Modal>
+    </>
+  );
+}

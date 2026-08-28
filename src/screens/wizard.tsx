@@ -2,10 +2,11 @@ import { useTranslation } from "react-i18next";
 import { useState } from "react";
 
 import { useChrome } from "@/hooks/use-chrome";
+import { useResolvedLocale } from "@/hooks/use-resolved-locale";
+import { useSafeBottomPad } from "@/hooks/use-safe-bottom-pad";
 import { UI_LOCALES } from "@/i18n/locales";
 import { usePreferencesStore } from "@/state/preferences-store";
 import { Pressable, ScrollView, Text, View, cn, ui } from "@/tw";
-import { useResolvedLocale } from "@/hooks/use-resolved-locale";
 
 export function WizardScreen() {
   const { t } = useTranslation();
@@ -15,11 +16,13 @@ export function WizardScreen() {
   const setSimpleMode = usePreferencesStore((state) => state.setSimpleMode);
   const completeWizard = usePreferencesStore((state) => state.completeWizard);
   const [step, setStep] = useState<0 | 1>(0);
+  const bottomPad = useSafeBottomPad();
 
   return (
     <ScrollView
       className={cn("flex-1", ui.page)}
       contentContainerClassName="flex-grow px-6 py-8"
+      style={{ paddingBottom: bottomPad }}
     >
       {step === 0 ? (
         <View className="flex-1 justify-center gap-6">

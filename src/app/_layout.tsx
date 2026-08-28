@@ -8,10 +8,16 @@ import {
 } from "@expo-google-fonts/noto-sans-gurmukhi";
 import { Stack, ThemeProvider } from "expo-router";
 import { StatusBar } from "expo-status-bar";
-import { useEffect } from "react";
+import { NavigationBar } from 'expo-navigation-bar';
 
+import { useEffect, useState } from "react";
+import { AppState } from "react-native";
+
+import { hydrateCatalogue, refreshCatalogue } from "@/catalogue";
+import { PlaybackKeepAwake } from "@/components/playback-keep-awake";
 import { useResolvedLocale } from "@/hooks/use-resolved-locale";
 import i18n from "@/i18n";
+import { initPlayback } from "@/playback";
 import { usePreferencesStore } from "@/state/preferences-store";
 import {
   applyCssColorScheme,
@@ -24,6 +30,7 @@ import {
   useIsDark,
   useThemeColors,
 } from "@/theme/use-theme-colors";
+import { View, cn, ui } from "@/tw";
 
 export const unstable_settings = {
   anchor: "(tabs)",
@@ -41,6 +48,22 @@ export default function RootLayout() {
   const theme = usePreferencesStore((state) => state.theme);
   const isDark = useIsDark();
   const colors = useThemeColors();
+  const [catalogueHydrated, setCatalogueHydrated] = useState(false);
+
+  useEffect(() => {
+    let cancelled = false;
+    void hydrateCatalogue().finally(() => {
+      if (cancelled) {
+        return;
+      }
+      setCatalogueHydrated(true);
+      initPlayback();
+      void refreshCatalogue();
+    });
+    return () => {
+      cancelled = true;
+    };
+  }, []);
 
   useEffect(() => {
     void i18n.changeLanguage(locale);
@@ -51,18 +74,47 @@ export default function RootLayout() {
   }, [theme]);
 
   useEffect(() => {
-    applyCssColorScheme(schemeFromDark(isDark));
-    applySystemBackground(colors.bg);
+    function applyChrome(): void {
+      applyCssColorScheme(schemeFromDark(isDark));
+      applySystemBackground(colors.bg);
+    }
+    applyChrome();
+    let latestTimerId: number | undefined;
+    const sub = AppState.addEventListener("change", (state) => {
+      if (state === "active") {
+        if (latestTimerId) {
+          clearTimeout(latestTimerId);
+        }
+        latestTimerId = setTimeout(applyChrome, 300);
+      } else {
+        if (latestTimerId) {
+          clearTimeout(latestTimerId);
+        }
+        latestTimerId = undefined;
+      }
+    });
+    return () => {
+      if (latestTimerId) {
+        clearTimeout(latestTimerId);
+      }
+      sub.remove();
+    };
   }, [colors.bg, isDark]);
 
-  if (!fontsLoaded && !fontError) {
+  if ((!fontsLoaded && !fontError) || !catalogueHydrated) {
     return null;
   }
 
   return (
     <ThemeProvider value={navigationTheme(isDark, colors)}>
-      <StatusBar style={isDark ? "light" : "dark"} />
-      <Stack screenOptions={{ headerShown: false }}>
+      <View className={cn("flex-1", ui.page)}>
+        <StatusBar style={isDark ? "light" : "dark"} />
+        <PlaybackKeepAwake />
+        <Stack
+          screenOptions={{
+            headerShown: false
+          }}
+        >
         <Stack.Protected guard={!hasCompletedWizard}>
           <Stack.Screen name="wizard" />
         </Stack.Protected>
@@ -72,18 +124,27 @@ export default function RootLayout() {
             name="settings"
             options={{
               presentation: "fullScreenModal",
-              headerShown: true,
+              headerShown: false,
             }}
           />
           <Stack.Screen
             name="now-playing"
             options={{
               presentation: "fullScreenModal",
-              headerShown: true,
+              headerShown: false,
+            }}
+          />
+          <Stack.Screen
+            name="bookmarks"
+            options={{
+              presentation: "fullScreenModal",
+              headerShown: false,
             }}
           />
         </Stack.Protected>
-      </Stack>
+        </Stack>
+        <NavigationBar style={isDark ? "light" : "dark"}/>
+      </View>
     </ThemeProvider>
   );
 }

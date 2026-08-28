@@ -1,8 +1,6 @@
 import * as v from "valibot";
 
-import { catalogueSchema, type Catalogue } from "./schema";
-
-const COLLECTION_KINDS = new Set(["sehaj_paath", "audiobook", "radio"]);
+import { catalogueSchema, collectionSchema, catalogueObjectSchema, namedEntitySchema, type Catalogue } from "./schema";
 
 export class CatalogueParseError extends Error {
   constructor(message: string) {
@@ -30,57 +28,53 @@ export function parseCatalogue(value: unknown): Catalogue {
   return result.output;
 }
 
-function isRecord(value: unknown): value is Record<string, unknown> {
-  return typeof value === "object" && value !== null && !Array.isArray(value);
-}
+const collectionKinds = collectionSchema.options.map(
+  (option) => option.entries.kind.literal
+) as [string, ...string[]];
 
-function isEntityArray(value: unknown): boolean {
-  return (
-    Array.isArray(value) &&
-    value.every(
-      (item) =>
-        isRecord(item) &&
-        typeof item.id === "string" &&
-        item.id.length > 0 &&
-        isRecord(item.name) &&
-        typeof item.name.en === "string",
-    )
-  );
-}
+const shallowCollectionSchema = v.object({
+  id: collectionSchema.options[0].entries.id,
+  kind: v.picklist(collectionKinds),
+  tracks: v.array(v.unknown()),
+});
+
+const shallowEntitySchema = v.object({
+  id: namedEntitySchema.entries.id,
+  name: namedEntitySchema.entries.name,
+});
+
+const cachedCatalogueSchema = v.object({
+  version: catalogueObjectSchema.entries.version,
+  heroImageUrl: catalogueObjectSchema.entries.heroImageUrl,
+  
+  authors: v.array(shallowEntitySchema),
+  reciters: v.array(shallowEntitySchema),
+  scriptures: v.array(shallowEntitySchema),
+  
+  collections: v.array(shallowCollectionSchema),
+  
+  resourceSections: v.array(v.unknown()),
+  resources: v.array(v.unknown()),
+});
 
 /** Cheap shape check for disk cache and downloads. Full Valibot runs at publish/CI only. */
 export function assertCachedCatalogue(value: unknown): Catalogue {
-  if (!isRecord(value)) {
-    throw new CatalogueParseError("Cached catalogue is not an object");
+  const result = v.safeParse(cachedCatalogueSchema, value);
+  
+  if (result.success) {
+    return value as Catalogue; 
   }
-  if (typeof value.version !== "number" || !Number.isFinite(value.version)) {
-    throw new CatalogueParseError("Cached catalogue is missing version");
-  }
-  if (typeof value.heroImageUrl !== "string" || value.heroImageUrl.length === 0) {
-    throw new CatalogueParseError("Cached catalogue is missing heroImageUrl");
-  }
-  if (!isEntityArray(value.authors) || !isEntityArray(value.reciters)) {
-    throw new CatalogueParseError("Cached catalogue authors or reciters are invalid");
-  }
-  if (!isEntityArray(value.scriptures)) {
-    throw new CatalogueParseError("Cached catalogue scriptures are invalid");
-  }
-  if (!Array.isArray(value.collections) || value.collections.length === 0) {
-    throw new CatalogueParseError("Cached catalogue collections are invalid");
-  }
-  for (const collection of value.collections) {
-    if (
-      !isRecord(collection) ||
-      typeof collection.id !== "string" ||
-      typeof collection.kind !== "string" ||
-      !COLLECTION_KINDS.has(collection.kind) ||
-      !Array.isArray(collection.tracks)
-    ) {
-      throw new CatalogueParseError("Cached catalogue collection is invalid");
-    }
-  }
-  if (!Array.isArray(value.resourceSections) || !Array.isArray(value.resources)) {
-    throw new CatalogueParseError("Cached catalogue resources are invalid");
-  }
-  return value as Catalogue;
+
+  // To keep your exact custom error messages, map the failure path
+  const firstIssue = result.issues[0];
+  const rootKey = firstIssue.path?.[0]?.key;
+
+  if (!rootKey) throw new CatalogueParseError("Cached catalogue is not an object");
+  if (rootKey === "version") throw new CatalogueParseError("Cached catalogue is missing version");
+  if (rootKey === "heroImageUrl") throw new CatalogueParseError("Cached catalogue is missing heroImageUrl");
+  if (rootKey === "authors" || rootKey === "reciters") throw new CatalogueParseError("Cached catalogue authors or reciters are invalid");
+  if (rootKey === "scriptures") throw new CatalogueParseError("Cached catalogue scriptures are invalid");
+  if (rootKey === "collections") throw new CatalogueParseError("Cached catalogue collections are invalid");
+  if (rootKey === "resourceSections" || rootKey === "resources") throw new CatalogueParseError("Cached catalogue resources are invalid");
+  throw new CatalogueParseError(formatIssues(result.issues));
 }

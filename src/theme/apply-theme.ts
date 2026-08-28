@@ -1,6 +1,6 @@
+import * as SystemUI from "expo-system-ui";
 import { Appearance, type ColorValue } from "react-native";
 import { colorScheme } from "react-native-css";
-import * as SystemUI from "expo-system-ui";
 
 export type ThemePreference = "system" | "light" | "dark";
 export type ColorSchemeName = "light" | "dark";
@@ -18,5 +18,7 @@ export function applyCssColorScheme(scheme: ColorSchemeName) {
 }
 
 export function applySystemBackground(color: ColorValue) {
-  void SystemUI.setBackgroundColorAsync(color);
+  void SystemUI.setBackgroundColorAsync(color).catch(() => {
+    // Activity can be gone after background.
+  });
 }

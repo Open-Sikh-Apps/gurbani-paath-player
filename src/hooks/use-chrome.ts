@@ -13,5 +13,9 @@ export function useChrome() {
     title: simpleMode ? "text-2xl font-semibold" : "text-xl font-semibold",
     body: simpleMode ? "text-lg" : "text-base",
     tabIcon: simpleMode ? 28 : 22,
+    playerIcon: simpleMode ? 36 : 28,
+    playerPlayIcon: simpleMode ? 64 : 52,
+    scrubberTrack: simpleMode ? "h-4" : "h-1.5",
+    scrubberThumb: simpleMode ? 28 : 16,
   } as const;
 }

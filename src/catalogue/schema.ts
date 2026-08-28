@@ -1,8 +1,8 @@
 import * as v from "valibot";
 
-const nonEmptyString = v.pipe(v.string(), v.nonEmpty());
+export const nonEmptyString = v.pipe(v.string(), v.nonEmpty());
 const nonEmptyUrl = v.pipe(nonEmptyString, v.url());
-const finiteNumber = v.pipe(v.number(), v.finite());
+export const finiteNumber = v.pipe(v.number(), v.finite());
 
 export const l10nTextSchema = v.objectWithRest(
   { en: nonEmptyString },
@@ -21,7 +21,7 @@ const namedEntityBase = {
   aboutUrl: v.optional(l10nUrlSchema),
 };
 
-const namedEntitySchema = v.object(namedEntityBase);
+export const namedEntitySchema = v.object(namedEntityBase);
 
 const scriptureSchema = v.object({
   ...namedEntityBase,
@@ -112,7 +112,7 @@ export const collectionSchema = v.variant("kind", [
   }),
 ]);
 
-const catalogueObjectSchema = v.object({
+export const catalogueObjectSchema = v.object({
   version: finiteNumber,
   heroImageUrl: nonEmptyUrl,
   authors: v.array(namedEntitySchema),

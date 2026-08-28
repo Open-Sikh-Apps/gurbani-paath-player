@@ -24,27 +24,100 @@
     "themeSystem": "System",
     "themeLight": "Light",
     "themeDark": "Dark",
+    "keepScreenOn": "Keep screen on while playing",
+    "keepScreenOnHint": "Prevents the screen from sleeping during playback",
+    "remotePrimary": "Lock screen and headset buttons",
+    "remotePrimaryHint": "Primary buttons work on the lock screen, notification, Bluetooth, and car. The other pair stays in the app and the expanded notification.",
+    "remotePrimarySeek": "Jump 10 seconds",
+    "remotePrimarySkip": "Previous and next track",
     "close": "Close"
   },
   "library": {
     "title": "Library",
-    "placeholder": "Albums you add to your library will appear here."
+    "placeholder": "Albums you add to your library will appear here.",
+    "add": "Add to library",
+    "remove": "Remove from library"
   },
   "nowPlaying": {
     "title": "Now Playing",
-    "placeholder": "Playback controls will appear here."
+    "placeholder": "Playback controls will appear here.",
+    "openAlbum": "Open album"
   },
   "home": {
     "title": "Home",
-    "fateh": "Waheguru Ji Ka Khalsa, Waheguru Ji Ki Fateh"
+    "fateh": "Waheguru Ji Ka Khalsa, Waheguru Ji Ki Fateh",
+    "heroA11y": "Sri Guru Granth Sahib Ji",
+    "menu": "More options",
+    "refreshCatalogue": "Refresh catalogue",
+    "simpleModeOn": "Turn on Simple mode",
+    "simpleModeOff": "Turn off Simple mode",
+    "keepScreenOn": "Keep screen on while playing",
+    "keepScreenOff": "Allow screen to sleep while playing"
   },
   "album": {
     "title": "Album",
-    "placeholder": "Album {{albumId}} will open here.",
-    "trackPlaceholder": "Track {{trackId}} in album {{albumId}} will open here."
+    "unavailable": "This album is no longer in the catalogue.",
+    "resume": "Resume"
+  },
+  "player": {
+    "play": "Play",
+    "pause": "Pause",
+    "previous": "Previous track",
+    "next": "Next track",
+    "seekBack": "Jump back 10 seconds",
+    "seekForward": "Jump forward 10 seconds",
+    "rateSlower": "Slower",
+    "rateFaster": "Faster",
+    "scrubber": "Playback position",
+    "buffering": "Buffering…",
+    "playbackError": "Could not play this track. Tap play to try again.",
+    "readAlong": "Read along",
+    "readAlongTitle": "Read along",
+    "readAlongBody": "This link opens only the first ang in the current audio, not the ang at the playhead.",
+    "readAlongCancel": "Cancel",
+    "readAlongOpen": "Open"
+  },
+  "sleep": {
+    "title": "Sleep timer",
+    "remaining": "Time remaining",
+    "cancel": "Cancel timer",
+    "endOfTrack": "End of this track",
+    "endOfAlbum": "End of album",
+    "afterTracks": "After a number of tracks",
+    "tracks": "Tracks",
+    "tracksRemaining_one": "{{count}} track remaining",
+    "tracksRemaining_other": "{{count}} tracks remaining",
+    "duration": "Hours and minutes",
+    "hours": "Hours",
+    "minutes": "Minutes",
+    "start": "Start timer"
+  },
+  "bookmark": {
+    "add": "Add bookmark",
+    "save": "Save bookmark",
+    "cancel": "Cancel",
+    "listTitle": "Bookmarks",
+    "empty": "No bookmarks in this album yet.",
+    "note": "Note",
+    "noteHint": "Optional. You can save without a note.",
+    "edit": "Edit",
+    "delete": "Delete",
+    "unavailable": "This track is no longer available."
+  },
+  "history": {
+    "title": "History",
+    "empty": "Albums you play will appear here."
+  },
+  "resources": {
+    "title": "Resources",
+    "empty": "No resources in the catalogue yet."
+  },
+  "miniPlayer": {
+    "open": "Open Now Playing"
   },
   "catalogue": {
     "loadError": "Could not load the catalogue.",
+    "refreshError": "Could not refresh the catalogue. Showing the last saved copy.",
     "version": "Version {{version}}",
     "trackCount_one": "{{count}} track",
     "trackCount_other": "{{count}} tracks"

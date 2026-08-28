@@ -24,27 +24,100 @@
     "themeSystem": "ਸਿਸਟਮ",
     "themeLight": "ਰੋਸ਼ਨ",
     "themeDark": "ਗੂੜ੍ਹਾ",
+    "keepScreenOn": "ਚੱਲਣ ਵੇਲੇ ਸਕਰੀਨ ਚਾਲੂ ਰੱਖੋ",
+    "keepScreenOnHint": "ਪਲੇਬੈਕ ਦੌਰਾਨ ਸਕਰੀਨ ਨੂੰ ਸੌਣ ਤੋਂ ਰੋਕਦਾ ਹੈ",
+    "remotePrimary": "ਲਾਕ ਸਕਰੀਨ ਅਤੇ ਹੈਡਸੈੱਟ ਬਟਨ",
+    "remotePrimaryHint": "ਮੁੱਖ ਬਟਨ ਲਾਕ ਸਕਰੀਨ, ਨੋਟੀਫਿਕੇਸ਼ਨ, ਬਲੂਟੁੱਥ ਅਤੇ ਕਾਰ ਵਿੱਚ ਕੰਮ ਕਰਦੇ ਹਨ। ਦੂਜਾ ਜੋੜਾ ਐਪ ਅਤੇ ਖੁੱਲ੍ਹੀ ਨੋਟੀਫਿਕੇਸ਼ਨ ਵਿੱਚ ਰਹਿੰਦਾ ਹੈ।",
+    "remotePrimarySeek": "10 ਸਕਿੰਟ ਅੱਗੇ-ਪਿੱਛੇ",
+    "remotePrimarySkip": "ਪਿਛਲਾ ਅਤੇ ਅਗਲਾ ਟਰੈਕ",
     "close": "ਬੰਦ ਕਰੋ"
   },
   "library": {
     "title": "ਲਾਇਬ੍ਰੇਰੀ",
-    "placeholder": "ਜੋ ਐਲਬਮਾਂ ਤੁਸੀਂ ਲਾਇਬ੍ਰੇਰੀ ਵਿੱਚ ਜੋੜੋਗੇ, ਉਹ ਇੱਥੇ ਦਿਖਣਗੀਆਂ।"
+    "placeholder": "ਜੋ ਐਲਬਮਾਂ ਤੁਸੀਂ ਲਾਇਬ੍ਰੇਰੀ ਵਿੱਚ ਜੋੜੋਗੇ, ਉਹ ਇੱਥੇ ਦਿਖਣਗੀਆਂ।",
+    "add": "ਲਾਇਬ੍ਰੇਰੀ ਵਿੱਚ ਜੋੜੋ",
+    "remove": "ਲਾਇਬ੍ਰੇਰੀ ਤੋਂ ਹਟਾਓ"
   },
   "nowPlaying": {
     "title": "ਹੁਣ ਚੱਲ ਰਿਹਾ",
-    "placeholder": "ਪਲੇਬੈਕ ਕੰਟਰੋਲ ਇੱਥੇ ਦਿਖਣਗੇ।"
+    "placeholder": "ਪਲੇਬੈਕ ਕੰਟਰੋਲ ਇੱਥੇ ਦਿਖਣਗੇ।",
+    "openAlbum": "ਐਲਬਮ ਖੋਲ੍ਹੋ"
   },
   "home": {
     "title": "ਘਰ",
-    "fateh": "ਵਾਹਿਗੁਰੂ ਜੀ ਕਾ ਖਾਲਸਾ, ਵਾਹਿਗੁਰੂ ਜੀ ਕੀ ਫਤਿਹ"
+    "fateh": "ਵਾਹਿਗੁਰੂ ਜੀ ਕਾ ਖਾਲਸਾ, ਵਾਹਿਗੁਰੂ ਜੀ ਕੀ ਫਤਿਹ",
+    "heroA11y": "ਸ੍ਰੀ ਗੁਰੂ ਗ੍ਰੰਥ ਸਾਹਿਬ ਜੀ",
+    "menu": "ਹੋਰ ਚੋਣਾਂ",
+    "refreshCatalogue": "ਕੈਟਾਲਾਗ ਤਾਜ਼ਾ ਕਰੋ",
+    "simpleModeOn": "ਸਰਲ ਮੋਡ ਚਾਲੂ ਕਰੋ",
+    "simpleModeOff": "ਸਰਲ ਮੋਡ ਬੰਦ ਕਰੋ",
+    "keepScreenOn": "ਚੱਲਣ ਵੇਲੇ ਸਕਰੀਨ ਚਾਲੂ ਰੱਖੋ",
+    "keepScreenOff": "ਚੱਲਣ ਵੇਲੇ ਸਕਰੀਨ ਨੂੰ ਸੌਣ ਦਿਓ"
   },
   "album": {
     "title": "ਐਲਬਮ",
-    "placeholder": "ਐਲਬਮ {{albumId}} ਇੱਥੇ ਖੁਲ੍ਹੇਗੀ।",
-    "trackPlaceholder": "ਐਲਬਮ {{albumId}} ਵਿਚਲਾ ਟਰੈਕ {{trackId}} ਇੱਥੇ ਖੁਲ੍ਹੇਗਾ।"
+    "unavailable": "ਇਹ ਐਲਬਮ ਹੁਣ ਕੈਟਾਲਾਗ ਵਿੱਚ ਨਹੀਂ ਹੈ।",
+    "resume": "ਜਾਰੀ ਰੱਖੋ"
+  },
+  "player": {
+    "play": "ਚਲਾਓ",
+    "pause": "ਰੋਕੋ",
+    "previous": "ਪਿਛਲਾ ਟਰੈਕ",
+    "next": "ਅਗਲਾ ਟਰੈਕ",
+    "seekBack": "10 ਸਕਿੰਟ ਪਿੱਛੇ",
+    "seekForward": "10 ਸਕਿੰਟ ਅੱਗੇ",
+    "rateSlower": "ਹੌਲੀ",
+    "rateFaster": "ਤੇਜ਼",
+    "scrubber": "ਪਲੇਬੈਕ ਸਥਿਤੀ",
+    "buffering": "ਲੋਡ ਹੋ ਰਿਹਾ ਹੈ…",
+    "playbackError": "ਇਹ ਟਰੈਕ ਚੱਲ ਨਹੀਂ ਸਕਿਆ। ਦੁਬਾਰਾ ਕੋਸ਼ਿਸ਼ ਲਈ ਚਲਾਓ ਟੈਪ ਕਰੋ।",
+    "readAlong": "ਨਾਲ ਨਾਲ ਪੜ੍ਹੋ",
+    "readAlongTitle": "ਨਾਲ ਨਾਲ ਪੜ੍ਹੋ",
+    "readAlongBody": "ਇਹ ਲਿੰਕ ਸਿਰਫ਼ ਇਸ ਆਡੀਓ ਦੇ ਪਹਿਲੇ ਅੰਗ ਤੇ ਖੁੱਲ੍ਹਦਾ ਹੈ, ਉਸ ਅੰਗ ਤੇ ਨਹੀਂ ਜਿੱਥੇ ਪਲੇਬੈਕ ਹੈ।",
+    "readAlongCancel": "ਰੱਦ ਕਰੋ",
+    "readAlongOpen": "ਖੋਲ੍ਹੋ"
+  },
+  "sleep": {
+    "title": "ਸਲੀਪ ਟਾਈਮਰ",
+    "remaining": "ਬਾਕੀ ਸਮਾਂ",
+    "cancel": "ਟਾਈਮਰ ਰੱਦ ਕਰੋ",
+    "endOfTrack": "ਇਸ ਟਰੈਕ ਦੇ ਅੰਤ ਤੇ",
+    "endOfAlbum": "ਐਲਬਮ ਦੇ ਅੰਤ ਤੇ",
+    "afterTracks": "ਕੁਝ ਟਰੈਕਾਂ ਬਾਅਦ",
+    "tracks": "ਟਰੈਕ",
+    "tracksRemaining_one": "{{count}} ਟਰੈਕ ਬਾਕੀ",
+    "tracksRemaining_other": "{{count}} ਟਰੈਕ ਬਾਕੀ",
+    "duration": "ਘੰਟੇ ਅਤੇ ਮਿੰਟ",
+    "hours": "ਘੰਟੇ",
+    "minutes": "ਮਿੰਟ",
+    "start": "ਟਾਈਮਰ ਚਾਲੂ ਕਰੋ"
+  },
+  "bookmark": {
+    "add": "ਬੁੱਕਮਾਰਕ ਜੋੜੋ",
+    "save": "ਬੁੱਕਮਾਰਕ ਸੰਭਾਲੋ",
+    "cancel": "ਰੱਦ ਕਰੋ",
+    "listTitle": "ਬੁੱਕਮਾਰਕ",
+    "empty": "ਇਸ ਐਲਬਮ ਵਿੱਚ ਹਾਲੇ ਬੁੱਕਮਾਰਕ ਨਹੀਂ ਹਨ।",
+    "note": "ਨੋਟ",
+    "noteHint": "ਵਿਕਲਪਿਕ। ਤੁਸੀਂ ਬਿਨਾਂ ਨੋਟ ਵੀ ਸੰਭਾਲ ਸਕਦੇ ਹੋ।",
+    "edit": "ਸੋਧੋ",
+    "delete": "ਮਿਟਾਓ",
+    "unavailable": "ਇਹ ਟਰੈਕ ਹੁਣ ਉਪਲਬਧ ਨਹੀਂ ਹੈ।"
+  },
+  "history": {
+    "title": "ਇਤਿਹਾਸ",
+    "empty": "ਜੋ ਐਲਬਮਾਂ ਤੁਸੀਂ ਚਲਾਓਗੇ, ਉਹ ਇੱਥੇ ਦਿਖਣਗੀਆਂ।"
+  },
+  "resources": {
+    "title": "ਸਰੋਤ",
+    "empty": "ਕੈਟਾਲਾਗ ਵਿੱਚ ਹਾਲੇ ਸਰੋਤ ਨਹੀਂ ਹਨ।"
+  },
+  "miniPlayer": {
+    "open": "ਹੁਣ ਚੱਲ ਰਿਹਾ ਖੋਲ੍ਹੋ"
   },
   "catalogue": {
     "loadError": "ਕੈਟਾਲਾਗ ਲੋਡ ਨਹੀਂ ਹੋ ਸਕਿਆ।",
+    "refreshError": "ਕੈਟਾਲਾਗ ਤਾਜ਼ਾ ਨਹੀਂ ਹੋ ਸਕਿਆ। ਆਖਰੀ ਸੰਭਾਲੀ ਕਾਪੀ ਵਿਖਾ ਰਹੇ ਹਾਂ।",
     "version": "ਵਰਜਨ {{version}}",
     "trackCount_one": "{{count}} ਟਰੈਕ",
     "trackCount_other": "{{count}} ਟਰੈਕ"

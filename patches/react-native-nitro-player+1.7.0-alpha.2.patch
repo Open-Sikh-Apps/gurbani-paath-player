@@ -1,0 +1,842 @@
+diff --git a/node_modules/react-native-nitro-player/android/src/main/java/com/margelo/nitro/nitroplayer/core/ExoPlayerCore.kt b/node_modules/react-native-nitro-player/android/src/main/java/com/margelo/nitro/nitroplayer/core/ExoPlayerCore.kt
+index bd5c970..87cb830 100644
+--- a/node_modules/react-native-nitro-player/android/src/main/java/com/margelo/nitro/nitroplayer/core/ExoPlayerCore.kt
++++ b/node_modules/react-native-nitro-player/android/src/main/java/com/margelo/nitro/nitroplayer/core/ExoPlayerCore.kt
+@@ -53,6 +53,12 @@ class ExoPlayerCore(
+         resetPosition: Boolean = false,
+     ) = player.setMediaItems(items, resetPosition)
+ 
++    fun setMediaItems(
++        items: List<MediaItem>,
++        startIndex: Int,
++        startPositionMs: Long,
++    ) = player.setMediaItems(items, startIndex, startPositionMs)
++
+     fun addMediaItems(items: List<MediaItem>) = player.addMediaItems(items)
+ 
+     fun removeMediaItems(
+diff --git a/node_modules/react-native-nitro-player/android/src/main/java/com/margelo/nitro/nitroplayer/core/TrackPlayerCore.kt b/node_modules/react-native-nitro-player/android/src/main/java/com/margelo/nitro/nitroplayer/core/TrackPlayerCore.kt
+index c5ecc5e..db24365 100644
+--- a/node_modules/react-native-nitro-player/android/src/main/java/com/margelo/nitro/nitroplayer/core/TrackPlayerCore.kt
++++ b/node_modules/react-native-nitro-player/android/src/main/java/com/margelo/nitro/nitroplayer/core/TrackPlayerCore.kt
+@@ -70,6 +70,10 @@ class TrackPlayerCore private constructor(
+ 
+     @Volatile internal var currentRepeatMode: RepeatMode = RepeatMode.OFF
+     internal var lookaheadCount: Int = 5
++    // Default off: stay on the failed item so JS can show error and wait for play().
++    @Volatile internal var skipOnSourceError: Boolean = false
++    // Default on: headset / compact buttons seek ±interval; overflow skips tracks.
++    @Volatile internal var remotePrimarySeek: Boolean = true
+ 
+     internal var remoteSkipForwardIntervalMs: Long = ExoPlayerBuilder.DEFAULT_REMOTE_SKIP_INTERVAL_MS
+     internal var remoteSkipBackwardIntervalMs: Long = ExoPlayerBuilder.DEFAULT_REMOTE_SKIP_INTERVAL_MS
+diff --git a/node_modules/react-native-nitro-player/android/src/main/java/com/margelo/nitro/nitroplayer/core/TrackPlayerListener.kt b/node_modules/react-native-nitro-player/android/src/main/java/com/margelo/nitro/nitroplayer/core/TrackPlayerListener.kt
+index a98389f..cab468a 100644
+--- a/node_modules/react-native-nitro-player/android/src/main/java/com/margelo/nitro/nitroplayer/core/TrackPlayerListener.kt
++++ b/node_modules/react-native-nitro-player/android/src/main/java/com/margelo/nitro/nitroplayer/core/TrackPlayerListener.kt
+@@ -149,6 +149,10 @@ internal class TrackPlayerEventListener(
+                 if (firstTrack != null) notifyTrackChange(firstTrack, Reason.REPEAT)
+                 return
+             }
++            // Leave playWhenReady false so a later seek (pause-rewind) cannot restart the track.
++            if (playbackState == Player.STATE_ENDED && currentRepeatMode == RepeatMode.OFF) {
++                exo.playWhenReady = false
++            }
+             emitStateChange()
+         }
+     }
+@@ -177,12 +181,16 @@ internal class TrackPlayerEventListener(
+                 "TrackPlayer",
+                 "Player error: ${error.errorCodeName} - ${error.message}",
+             )
++            // IDLE + playWhenReady would auto-retry when the network returns.
++            exo.playWhenReady = false
+             notifyPlaybackStateChange(TrackPlayerState.STOPPED, Reason.ERROR)
+-            // A source error leaves ExoPlayer in IDLE; skip the dead item and
+-            // re-prepare so the rest of the queue keeps playing.
+-            if (exo.hasNextMediaItem()) {
++            if (skipOnSourceError && exo.hasNextMediaItem()) {
+                 exo.seekToNext()
+                 exo.prepare()
++                exo.playWhenReady = true
++            } else {
++                // Exo leaves playerError set (STATE_ERROR). Also stamp the platform session.
++                mediaSessionManager?.notifyPlaybackError(error.errorCodeName)
+             }
+         }
+     }
+diff --git a/node_modules/react-native-nitro-player/android/src/main/java/com/margelo/nitro/nitroplayer/core/TrackPlayerPlayback.kt b/node_modules/react-native-nitro-player/android/src/main/java/com/margelo/nitro/nitroplayer/core/TrackPlayerPlayback.kt
+index 032b91e..65d4bfd 100644
+--- a/node_modules/react-native-nitro-player/android/src/main/java/com/margelo/nitro/nitroplayer/core/TrackPlayerPlayback.kt
++++ b/node_modules/react-native-nitro-player/android/src/main/java/com/margelo/nitro/nitroplayer/core/TrackPlayerPlayback.kt
+@@ -71,6 +71,53 @@ internal fun TrackPlayerCore.skipToPreviousOnQueue() {
+     checkUpcomingTracksForUrls(lookaheadCount)
+ }
+ 
++internal fun TrackPlayerCore.seekBackOverflowing() {
++    val delta = remoteSkipBackwardIntervalMs
++    val position = exo.currentPosition
++    if (position >= delta) {
++        isManuallySeeked = true
++        exo.seekTo(position - delta)
++        return
++    }
++    if (currentTrackIndex <= 0) {
++        isManuallySeeked = true
++        exo.seekTo(0)
++        return
++    }
++    val remainder = delta - position
++    val prevIndex = currentTrackIndex - 1
++    val prevDurationMs = (currentTracks.getOrNull(prevIndex)?.duration ?: 0.0) * 1000.0
++    playFromIndexInternal(prevIndex)
++    isManuallySeeked = true
++    exo.seekTo((prevDurationMs - remainder).coerceAtLeast(0.0).toLong())
++}
++
++internal fun TrackPlayerCore.seekForwardOverflowing() {
++    val delta = remoteSkipForwardIntervalMs
++    val position = exo.currentPosition
++    val duration = if (exo.duration > 0) exo.duration else 0L
++    if (duration <= 0L) {
++        isManuallySeeked = true
++        exo.seekTo(position + delta)
++        return
++    }
++    val remaining = duration - position
++    if (remaining > delta) {
++        isManuallySeeked = true
++        exo.seekTo(position + delta)
++        return
++    }
++    if (currentTrackIndex >= currentTracks.size - 1) {
++        isManuallySeeked = true
++        exo.seekTo(duration)
++        return
++    }
++    val leftover = delta - remaining
++    playFromIndexInternal(currentTrackIndex + 1)
++    isManuallySeeked = true
++    exo.seekTo(leftover.coerceAtLeast(0L))
++}
++
+ suspend fun TrackPlayerCore.setRepeatMode(mode: RepeatMode) = withPlayerContext { setRepeatModeOnQueue(mode) }
+ 
+ internal fun TrackPlayerCore.setRepeatModeOnQueue(mode: RepeatMode) {
+@@ -103,7 +150,7 @@ suspend fun TrackPlayerCore.configure(config: PlayerConfig) = withPlayerContext
+ internal fun TrackPlayerCore.configureOnQueue(config: PlayerConfig) {
+     config.androidAutoEnabled?.let { NitroPlayerMediaBrowserService.isAndroidAutoEnabled = it }
+     config.lookaheadCount?.let { lookaheadCount = it.toInt() }
+-    config.androidNotificationIcon?.let { NitroPlayerPlaybackService.notificationSmallIconResName = it }
++    config.androidNotificationIcon?.let { applyConfigToken(it) }
+     remoteSkipIntervalMs(config.remoteSkipForwardInterval)?.let { remoteSkipForwardIntervalMs = it }
+     remoteSkipIntervalMs(config.remoteSkipBackwardInterval)?.let { remoteSkipBackwardIntervalMs = it }
+     applyRemoteSkipIntervals()
+@@ -113,9 +160,32 @@ internal fun TrackPlayerCore.configureOnQueue(config: PlayerConfig) {
+         config.showInNotification,
+         remoteSkipForwardIntervalMs,
+         remoteSkipBackwardIntervalMs,
++        remotePrimarySeek,
+     )
+ }
+ 
++// PlayerConfig has no extra flags; JS packs icon + skipOnError + remotePrimary here.
++private fun TrackPlayerCore.applyConfigToken(token: String) {
++    if (!token.contains(':')) {
++        NitroPlayerPlaybackService.notificationSmallIconResName = token
++        return
++    }
++    for (part in token.split(';')) {
++        val idx = part.indexOf(':')
++        if (idx < 0) continue
++        val key = part.substring(0, idx)
++        val value = part.substring(idx + 1)
++        when (key) {
++            "skipOnError" -> skipOnSourceError = value == "1"
++            "remotePrimary" -> remotePrimarySeek = value != "skip"
++            "icon" ->
++                if (value.isNotEmpty()) {
++                    NitroPlayerPlaybackService.notificationSmallIconResName = value
++                }
++        }
++    }
++}
++
+ // Resolved from the cast controller: mid-cast `exo` is the CastPlayer, whose increments are fixed
+ @OptIn(UnstableApi::class)
+ internal fun TrackPlayerCore.applyRemoteSkipIntervals() {
+diff --git a/node_modules/react-native-nitro-player/android/src/main/java/com/margelo/nitro/nitroplayer/core/TrackPlayerQueueBuild.kt b/node_modules/react-native-nitro-player/android/src/main/java/com/margelo/nitro/nitroplayer/core/TrackPlayerQueueBuild.kt
+index be44b28..729f24f 100644
+--- a/node_modules/react-native-nitro-player/android/src/main/java/com/margelo/nitro/nitroplayer/core/TrackPlayerQueueBuild.kt
++++ b/node_modules/react-native-nitro-player/android/src/main/java/com/margelo/nitro/nitroplayer/core/TrackPlayerQueueBuild.kt
+@@ -3,6 +3,7 @@
+ package com.margelo.nitro.nitroplayer.core
+ 
+ import android.net.Uri
++import androidx.media3.common.C
+ import androidx.media3.common.MediaItem
+ import androidx.media3.common.MediaMetadata
+ import androidx.media3.common.Player
+@@ -79,14 +80,15 @@ internal fun TrackPlayerCore.rebuildQueueAndPlayFromIndex(index: Int) {
+         return
+     }
+ 
++    val windowStart = maxOf(0, index - 1)
+     val windowEnd = minOf(index + 1 + QUEUE_WINDOW_SIZE, currentTracks.size)
+     val mediaItems =
+-        currentTracks.subList(index, windowEnd).map { track ->
++        currentTracks.subList(windowStart, windowEnd).map { track ->
+             makeMediaItem(track, mediaIdFor(track))
+         }
+ 
+     currentTrackIndex = index
+-    exo.setMediaItems(mediaItems, true)
++    exo.setMediaItems(mediaItems, index - windowStart, C.TIME_UNSET)
+     exo.prepare()
+ }
+ 
+diff --git a/node_modules/react-native-nitro-player/android/src/main/java/com/margelo/nitro/nitroplayer/core/TrackPlayerUrlLoader.kt b/node_modules/react-native-nitro-player/android/src/main/java/com/margelo/nitro/nitroplayer/core/TrackPlayerUrlLoader.kt
+index d03f213..90c4b78 100644
+--- a/node_modules/react-native-nitro-player/android/src/main/java/com/margelo/nitro/nitroplayer/core/TrackPlayerUrlLoader.kt
++++ b/node_modules/react-native-nitro-player/android/src/main/java/com/margelo/nitro/nitroplayer/core/TrackPlayerUrlLoader.kt
+@@ -24,7 +24,8 @@ internal fun TrackPlayerCore.updateTracksOnQueue(tracks: List<TrackItem>) {
+         val safeTracks =
+             tracks.filter { track ->
+                 when {
+-                    track.id == currentTrackId && !currentTrackIsEmpty -> false
++                    track.id == currentTrackId && !currentTrackIsEmpty ->
++                        track.url == currentTrack?.url
+ 
+                     // preserve gapless
+                     track.id == currentTrackId && currentTrackIsEmpty -> track.url.isNotEmpty()
+@@ -70,6 +71,26 @@ internal fun TrackPlayerCore.updateTracksOnQueue(tracks: List<TrackItem>) {
+             }
+ 
+             rebuildQueueFromCurrentPosition()
++
++            val metadataUpdate = currentTrackId?.let { id -> currentTracks.find { it.id == id } }
++            if (
++                !currentTrackResolvedNow &&
++                metadataUpdate != null &&
++                currentTrackUpdate != null &&
++                currentTrackUpdate.url == currentTrack?.url
++            ) {
++                val exoIndex = exo.currentMediaItemIndex
++                if (exoIndex >= 0) {
++                    val playlistId = currentPlaylistId ?: ""
++                    val mediaId =
++                        if (playlistId.isNotEmpty()) {
++                            "$playlistId:${metadataUpdate.id}"
++                        } else {
++                            metadataUpdate.id
++                        }
++                    exo.replaceMediaItem(exoIndex, makeMediaItem(metadataUpdate, mediaId))
++                }
++            }
+         }
+     }
+ }
+diff --git a/node_modules/react-native-nitro-player/android/src/main/java/com/margelo/nitro/nitroplayer/media/MediaSessionCallbackFactory.kt b/node_modules/react-native-nitro-player/android/src/main/java/com/margelo/nitro/nitroplayer/media/MediaSessionCallbackFactory.kt
+index 38892cf..91dd32a 100644
+--- a/node_modules/react-native-nitro-player/android/src/main/java/com/margelo/nitro/nitroplayer/media/MediaSessionCallbackFactory.kt
++++ b/node_modules/react-native-nitro-player/android/src/main/java/com/margelo/nitro/nitroplayer/media/MediaSessionCallbackFactory.kt
+@@ -15,6 +15,8 @@ import com.google.common.util.concurrent.ListenableFuture
+ import com.margelo.nitro.nitroplayer.TrackItem
+ import com.margelo.nitro.nitroplayer.core.NitroPlayerLogger
+ import com.margelo.nitro.nitroplayer.core.loadPlaylist
++import com.margelo.nitro.nitroplayer.core.skipToNextOnQueue
++import com.margelo.nitro.nitroplayer.core.skipToPreviousOnQueue
+ import com.margelo.nitro.nitroplayer.playlist.Playlist
+ import com.margelo.nitro.nitroplayer.playlist.PlaylistManager
+ import kotlinx.coroutines.CoroutineScope
+@@ -43,7 +45,11 @@ object MediaSessionCallbackFactory {
+                 MediaSession.ConnectionResult
+                     .AcceptedResultBuilder(session)
+                     .setAvailableSessionCommands(
+-                        MediaSession.ConnectionResult.DEFAULT_SESSION_COMMANDS,
++                        MediaSession.ConnectionResult.DEFAULT_SESSION_COMMANDS
++                            .buildUpon()
++                            .add(MediaSessionManager.skipTrackPreviousCommand())
++                            .add(MediaSessionManager.skipTrackNextCommand())
++                            .build(),
+                     ).setAvailablePlayerCommands(
+                         MediaSession.ConnectionResult.DEFAULT_PLAYER_COMMANDS,
+                     ).build()
+@@ -170,8 +176,15 @@ object MediaSessionCallbackFactory {
+                 controller: MediaSession.ControllerInfo,
+                 customCommand: SessionCommand,
+                 args: android.os.Bundle,
+-            ): ListenableFuture<SessionResult> =
+-                Futures.immediateFuture(SessionResult(SessionResult.RESULT_SUCCESS))
++            ): ListenableFuture<SessionResult> {
++                when (customCommand.customAction) {
++                    MediaSessionManager.SKIP_TRACK_PREVIOUS ->
++                        service.trackPlayerCore?.skipToPreviousOnQueue()
++                    MediaSessionManager.SKIP_TRACK_NEXT ->
++                        service.trackPlayerCore?.skipToNextOnQueue()
++                }
++                return Futures.immediateFuture(SessionResult(SessionResult.RESULT_SUCCESS))
++            }
+         }
+     }
+ 
+diff --git a/node_modules/react-native-nitro-player/android/src/main/java/com/margelo/nitro/nitroplayer/media/MediaSessionManager.kt b/node_modules/react-native-nitro-player/android/src/main/java/com/margelo/nitro/nitroplayer/media/MediaSessionManager.kt
+index c390861..312b3d7 100644
+--- a/node_modules/react-native-nitro-player/android/src/main/java/com/margelo/nitro/nitroplayer/media/MediaSessionManager.kt
++++ b/node_modules/react-native-nitro-player/android/src/main/java/com/margelo/nitro/nitroplayer/media/MediaSessionManager.kt
+@@ -1,10 +1,13 @@
+ package com.margelo.nitro.nitroplayer.media
+ 
+ import android.content.Context
++import android.os.Bundle
+ import androidx.media3.common.Player
+ import androidx.media3.common.util.UnstableApi
+ import androidx.media3.session.CommandButton
+ import androidx.media3.session.MediaSession
++import androidx.media3.session.SessionCommand
++import androidx.media3.session.SessionError
+ import com.margelo.nitro.nitroplayer.R
+ import com.margelo.nitro.nitroplayer.TrackItem
+ import com.margelo.nitro.nitroplayer.core.TrackPlayerCore
+@@ -23,8 +26,14 @@ class MediaSessionManager(
+     session: MediaSession,
+     private val playlistManager: PlaylistManager,
+ ) {
+-    private companion object {
++    companion object {
+         const val DEFAULT_REMOTE_SKIP_INTERVAL_MS = 15_000L
++        const val SKIP_TRACK_PREVIOUS = "nitro.skip_track_previous"
++        const val SKIP_TRACK_NEXT = "nitro.skip_track_next"
++
++        fun skipTrackPreviousCommand() = SessionCommand(SKIP_TRACK_PREVIOUS, Bundle.EMPTY)
++
++        fun skipTrackNextCommand() = SessionCommand(SKIP_TRACK_NEXT, Bundle.EMPTY)
+     }
+ 
+     private var trackPlayerCore: TrackPlayerCore? = null
+@@ -44,6 +53,7 @@ class MediaSessionManager(
+     private var showInNotification: Boolean = true
+     private var remoteSkipForwardIntervalMs: Long = DEFAULT_REMOTE_SKIP_INTERVAL_MS
+     private var remoteSkipBackwardIntervalMs: Long = DEFAULT_REMOTE_SKIP_INTERVAL_MS
++    private var remotePrimarySeek: Boolean = true
+ 
+     init {
+         updateMediaButtonPreferences()
+@@ -55,15 +65,24 @@ class MediaSessionManager(
+         showInNotification: Boolean?,
+         remoteSkipForwardIntervalMs: Long,
+         remoteSkipBackwardIntervalMs: Long,
++        remotePrimarySeek: Boolean,
+     ) {
+         androidAutoEnabled?.let { this.androidAutoEnabled = it }
+         carPlayEnabled?.let { this.carPlayEnabled = it }
+         showInNotification?.let { this.showInNotification = it }
+         this.remoteSkipForwardIntervalMs = remoteSkipForwardIntervalMs
+         this.remoteSkipBackwardIntervalMs = remoteSkipBackwardIntervalMs
++        this.remotePrimarySeek = remotePrimarySeek
+         updateMediaButtonPreferences()
+     }
+ 
++    fun notifyPlaybackError(codeName: String) {
++        val session = mediaSession ?: return
++        val error = SessionError(SessionError.ERROR_IO, codeName)
++        session.sendError(error)
++        session.mediaNotificationControllerInfo?.let { session.sendError(it, error) }
++    }
++
+     fun onTrackChanged(track: TrackItem?) {
+         currentTrack = track
+     }
+@@ -79,31 +98,65 @@ class MediaSessionManager(
+ 
+     private fun updateMediaButtonPreferences() {
+         val session = mediaSession ?: return
+-        // Preferences replace Media3's default layout — prev/next must be declared or they vanish
+         val preserved = session.mediaButtonPreferences.filterNot { it.isManagedButton() }
+-        session.setMediaButtonPreferences(
+-            listOf(previousTrackButton(), skipBackButton(), skipForwardButton(), nextTrackButton()) + preserved,
+-        )
++        // Compact follows remotePrimary. Overflow is the other pair; track-skip
++        // overflow uses custom commands so Bluetooth SEEK_TO_PREVIOUS/NEXT can seek.
++        val buttons =
++            if (remotePrimarySeek) {
++                listOf(
++                    skipBackButton(CommandButton.SLOT_BACK),
++                    skipForwardButton(CommandButton.SLOT_FORWARD),
++                    overflowPreviousTrackButton(),
++                    overflowNextTrackButton(),
++                )
++            } else {
++                listOf(
++                    previousTrackButton(CommandButton.SLOT_BACK),
++                    nextTrackButton(CommandButton.SLOT_FORWARD),
++                    skipBackButton(CommandButton.SLOT_OVERFLOW),
++                    skipForwardButton(CommandButton.SLOT_OVERFLOW),
++                )
++            }
++        session.setMediaButtonPreferences(buttons + preserved)
+     }
+ 
+-    private fun previousTrackButton(): CommandButton =
++    private fun previousTrackButton(slot: Int): CommandButton =
+         CommandButton
+             .Builder(CommandButton.ICON_PREVIOUS)
+             .setPlayerCommand(Player.COMMAND_SEEK_TO_PREVIOUS)
++            .setSlots(slot)
+             .setDisplayName(context.getString(R.string.nitro_player_previous_track))
+             .build()
+ 
+-    private fun nextTrackButton(): CommandButton =
++    private fun nextTrackButton(slot: Int): CommandButton =
+         CommandButton
+             .Builder(CommandButton.ICON_NEXT)
+             .setPlayerCommand(Player.COMMAND_SEEK_TO_NEXT)
++            .setSlots(slot)
++            .setDisplayName(context.getString(R.string.nitro_player_next_track))
++            .build()
++
++    private fun overflowPreviousTrackButton(): CommandButton =
++        CommandButton
++            .Builder(CommandButton.ICON_PREVIOUS)
++            .setSessionCommand(skipTrackPreviousCommand())
++            .setSlots(CommandButton.SLOT_OVERFLOW)
++            .setDisplayName(context.getString(R.string.nitro_player_previous_track))
++            .build()
++
++    private fun overflowNextTrackButton(): CommandButton =
++        CommandButton
++            .Builder(CommandButton.ICON_NEXT)
++            .setSessionCommand(skipTrackNextCommand())
++            .setSlots(CommandButton.SLOT_OVERFLOW)
+             .setDisplayName(context.getString(R.string.nitro_player_next_track))
+             .build()
+ 
+-    private fun skipBackButton(): CommandButton =
++    private fun skipBackButton(slot: Int): CommandButton =
+         CommandButton
+             .Builder(skipBackIcon(remoteSkipBackwardIntervalMs))
+             .setPlayerCommand(Player.COMMAND_SEEK_BACK)
++            .setSlots(slot)
+             .setDisplayName(
+                 context.getString(
+                     R.string.nitro_player_skip_back_seconds,
+@@ -111,10 +164,11 @@ class MediaSessionManager(
+                 ),
+             ).build()
+ 
+-    private fun skipForwardButton(): CommandButton =
++    private fun skipForwardButton(slot: Int): CommandButton =
+         CommandButton
+             .Builder(skipForwardIcon(remoteSkipForwardIntervalMs))
+             .setPlayerCommand(Player.COMMAND_SEEK_FORWARD)
++            .setSlots(slot)
+             .setDisplayName(
+                 context.getString(
+                     R.string.nitro_player_skip_forward_seconds,
+@@ -122,11 +176,14 @@ class MediaSessionManager(
+                 ),
+             ).build()
+ 
+-    private fun CommandButton.isManagedButton(): Boolean =
+-        playerCommand == Player.COMMAND_SEEK_BACK ||
++    private fun CommandButton.isManagedButton(): Boolean {
++        val action = sessionCommand?.customAction
++        if (action == SKIP_TRACK_PREVIOUS || action == SKIP_TRACK_NEXT) return true
++        return playerCommand == Player.COMMAND_SEEK_BACK ||
+             playerCommand == Player.COMMAND_SEEK_FORWARD ||
+             playerCommand == Player.COMMAND_SEEK_TO_PREVIOUS ||
+             playerCommand == Player.COMMAND_SEEK_TO_NEXT
++    }
+ 
+     private fun skipBackIcon(intervalMs: Long): Int =
+         when (intervalMs) {
+diff --git a/node_modules/react-native-nitro-player/android/src/main/java/com/margelo/nitro/nitroplayer/media/PlaybackService.kt b/node_modules/react-native-nitro-player/android/src/main/java/com/margelo/nitro/nitroplayer/media/PlaybackService.kt
+index e638d80..a58b9fb 100644
+--- a/node_modules/react-native-nitro-player/android/src/main/java/com/margelo/nitro/nitroplayer/media/PlaybackService.kt
++++ b/node_modules/react-native-nitro-player/android/src/main/java/com/margelo/nitro/nitroplayer/media/PlaybackService.kt
+@@ -7,6 +7,8 @@ import android.os.Handler
+ import android.os.IBinder
+ import android.os.Looper
+ import androidx.media3.cast.CastPlayer
++import androidx.media3.common.ForwardingPlayer
++import androidx.media3.common.Player
+ import androidx.media3.common.util.UnstableApi
+ import androidx.media3.exoplayer.ExoPlayer
+ import androidx.media3.session.DefaultMediaNotificationProvider
+@@ -15,6 +17,10 @@ import androidx.media3.session.MediaSessionService
+ import com.google.android.gms.cast.framework.CastContext
+ import com.margelo.nitro.nitroplayer.core.NitroPlayerLogger
+ import com.margelo.nitro.nitroplayer.core.TrackPlayerCore
++import com.margelo.nitro.nitroplayer.core.seekBackOverflowing
++import com.margelo.nitro.nitroplayer.core.seekForwardOverflowing
++import com.margelo.nitro.nitroplayer.core.skipToNextOnQueue
++import com.margelo.nitro.nitroplayer.core.skipToPreviousOnQueue
+ import com.margelo.nitro.nitroplayer.playlist.PlaylistManager
+ 
+ /**
+@@ -81,10 +87,97 @@ class NitroPlayerPlaybackService : MediaSessionService() {
+         // Build ExoPlayer on main looper (default)
+         player = ExoPlayerBuilder.build(this)
+ 
++        // MediaSession would otherwise call ExoPlayer.seekToPrevious/Next on a
++        // windowed timeline (playing item often at index 0 after resume).
++        val sessionPlayer =
++            object : ForwardingPlayer(player) {
++                override fun seekToPrevious() {
++                    val core = trackPlayerCore
++                    if (core == null) {
++                        super.seekToPrevious()
++                    } else if (core.remotePrimarySeek) {
++                        core.seekBackOverflowing()
++                    } else {
++                        core.skipToPreviousOnQueue()
++                    }
++                }
++
++                override fun seekToPreviousMediaItem() {
++                    val core = trackPlayerCore
++                    if (core == null) {
++                        super.seekToPreviousMediaItem()
++                    } else if (core.remotePrimarySeek) {
++                        core.seekBackOverflowing()
++                    } else {
++                        core.skipToPreviousOnQueue()
++                    }
++                }
++
++                override fun seekToNext() {
++                    val core = trackPlayerCore
++                    if (core == null) {
++                        super.seekToNext()
++                    } else if (core.remotePrimarySeek) {
++                        core.seekForwardOverflowing()
++                    } else {
++                        core.skipToNextOnQueue()
++                    }
++                }
++
++                override fun seekToNextMediaItem() {
++                    val core = trackPlayerCore
++                    if (core == null) {
++                        super.seekToNextMediaItem()
++                    } else if (core.remotePrimarySeek) {
++                        core.seekForwardOverflowing()
++                    } else {
++                        core.skipToNextOnQueue()
++                    }
++                }
++
++                // ExoPlayer drops SEEK_TO_NEXT on the last window. Bluetooth still
++                // needs it when primary is ±interval so +10 works mid last-track.
++                override fun getAvailableCommands(): Player.Commands {
++                    val commands = super.getAvailableCommands()
++                    if (trackPlayerCore?.remotePrimarySeek != true) {
++                        return commands
++                    }
++                    return commands
++                        .buildUpon()
++                        .add(Player.COMMAND_SEEK_TO_NEXT)
++                        .add(Player.COMMAND_SEEK_TO_NEXT_MEDIA_ITEM)
++                        .add(Player.COMMAND_SEEK_FORWARD)
++                        .build()
++                }
++
++                override fun isCommandAvailable(command: Int): Boolean {
++                    if (trackPlayerCore?.remotePrimarySeek == true &&
++                        (
++                            command == Player.COMMAND_SEEK_TO_NEXT ||
++                                command == Player.COMMAND_SEEK_TO_NEXT_MEDIA_ITEM ||
++                                command == Player.COMMAND_SEEK_FORWARD
++                        )
++                    ) {
++                        return true
++                    }
++                    return super.isCommandAvailable(command)
++                }
++
++                override fun seekBack() {
++                    val core = trackPlayerCore
++                    if (core != null) core.seekBackOverflowing() else super.seekBack()
++                }
++
++                override fun seekForward() {
++                    val core = trackPlayerCore
++                    if (core != null) core.seekForwardOverflowing() else super.seekForward()
++                }
++            }
++
+         // Build MediaSession
+         val playlistManager = PlaylistManager.getInstance(this)
+         mediaSession = MediaSession
+-            .Builder(this, player)
++            .Builder(this, sessionPlayer)
+             .setCallback(MediaSessionCallbackFactory.create(this, playlistManager))
+             .apply { buildSessionActivity()?.let { setSessionActivity(it) } }
+             .build()
+diff --git a/node_modules/react-native-nitro-player/ios/HybridTrackPlayer.swift b/node_modules/react-native-nitro-player/ios/HybridTrackPlayer.swift
+index d02bb11..3ff3218 100644
+--- a/node_modules/react-native-nitro-player/ios/HybridTrackPlayer.swift
++++ b/node_modules/react-native-nitro-player/ios/HybridTrackPlayer.swift
+@@ -100,7 +100,8 @@ final class HybridTrackPlayer: HybridTrackPlayerSpec {
+         showInNotification: config.showInNotification,
+         lookaheadCount: config.lookaheadCount.map { Int($0) },
+         remoteSkipForwardInterval: config.remoteSkipForwardInterval,
+-        remoteSkipBackwardInterval: config.remoteSkipBackwardInterval
++        remoteSkipBackwardInterval: config.remoteSkipBackwardInterval,
++        androidNotificationIcon: config.androidNotificationIcon
+       )
+     }
+   }
+diff --git a/node_modules/react-native-nitro-player/ios/core/TrackPlayerCore.swift b/node_modules/react-native-nitro-player/ios/core/TrackPlayerCore.swift
+index 50df2f2..992e389 100644
+--- a/node_modules/react-native-nitro-player/ios/core/TrackPlayerCore.swift
++++ b/node_modules/react-native-nitro-player/ios/core/TrackPlayerCore.swift
+@@ -56,6 +56,10 @@ class TrackPlayerCore: NSObject {
+   internal var currentRepeatMode: RepeatMode = .off
+   internal var currentPlaybackSpeed: Double = 1.0
+   internal var lookaheadCount: Int = 5
++  // Default off: stay on the failed item so JS can show error and wait for play().
++  internal var skipOnSourceError = false
++  // Default on: lock-screen / headset next-prev seek ±interval; in-app still skips tracks.
++  internal var remotePrimarySeek = true
+   internal var boundaryTimeObserver: Any?
+   internal var currentItemObservers: [NSKeyValueObservation] = []
+ 
+diff --git a/node_modules/react-native-nitro-player/ios/core/TrackPlayerListener.swift b/node_modules/react-native-nitro-player/ios/core/TrackPlayerListener.swift
+index 302aebf..895758b 100644
+--- a/node_modules/react-native-nitro-player/ios/core/TrackPlayerListener.swift
++++ b/node_modules/react-native-nitro-player/ios/core/TrackPlayerListener.swift
+@@ -146,6 +146,7 @@ extension TrackPlayerCore {
+         if player.status == .readyToPlay { self.emitStateChange() }
+         else if player.status == .failed {
+           NitroPlayerLogger.log("TrackPlayerCore", "❌ Player failed")
++          self.intendedToPlay = false
+           self.notifyPlaybackStateChange(.stopped, .error)
+         }
+       } else if keyPath == "rate" {
+@@ -210,6 +211,7 @@ extension TrackPlayerCore {
+     else { return }
+     playerQueue.async { [weak self] in
+       NitroPlayerLogger.log("TrackPlayerCore", "❌ Playback failed - \(error)")
++      self?.intendedToPlay = false
+       self?.notifyPlaybackStateChange(.stopped, .error)
+     }
+   }
+diff --git a/node_modules/react-native-nitro-player/ios/core/TrackPlayerPlayback.swift b/node_modules/react-native-nitro-player/ios/core/TrackPlayerPlayback.swift
+index 00514ae..1352228 100644
+--- a/node_modules/react-native-nitro-player/ios/core/TrackPlayerPlayback.swift
++++ b/node_modules/react-native-nitro-player/ios/core/TrackPlayerPlayback.swift
+@@ -103,13 +103,19 @@ extension TrackPlayerCore {
+   func configureOnQueue(
+     androidAutoEnabled: Bool?, carPlayEnabled: Bool?,
+     showInNotification: Bool?, lookaheadCount: Int?,
+-    remoteSkipForwardInterval: Double?, remoteSkipBackwardInterval: Double?
++    remoteSkipForwardInterval: Double?, remoteSkipBackwardInterval: Double?,
++    androidNotificationIcon: String? = nil
+   ) {
+     if let la = lookaheadCount {
+       self.lookaheadCount = la
+       NitroPlayerLogger.log("TrackPlayerCore", "🔄 Lookahead count set to: \(la)")
+     }
++    // PlayerConfig has no extra flags; JS packs skipOnError, remotePrimary, and Android icon here.
++    if let icon = androidNotificationIcon {
++      applyConfigToken(icon)
++    }
+     let playbackSpeed = currentPlaybackSpeed
++    let primarySeek = remotePrimarySeek
+     DispatchQueue.main.async { [weak self] in
+       self?.mediaSessionManager?.configure(
+         androidAutoEnabled: androidAutoEnabled,
+@@ -117,10 +123,32 @@ extension TrackPlayerCore {
+         showInNotification: showInNotification,
+         remoteSkipForwardInterval: remoteSkipForwardInterval,
+         remoteSkipBackwardInterval: remoteSkipBackwardInterval,
+-        playbackSpeed: playbackSpeed
++        playbackSpeed: playbackSpeed,
++        remotePrimarySeek: primarySeek
+       )
+     }
+   }
++
++  private func applyConfigToken(_ icon: String) {
++    if !icon.contains(":") { return }
++    for part in icon.split(separator: ";") {
++      let pieces = part.split(separator: ":", maxSplits: 1)
++      guard pieces.count == 2 else { continue }
++      let key = String(pieces[0])
++      let value = String(pieces[1])
++      switch key {
++      case "skipOnError":
++        skipOnSourceError = value == "1"
++      case "remotePrimary":
++        remotePrimarySeek = value != "skip"
++      case "icon":
++        // Android drawable name; iOS Now Playing uses the app icon.
++        break
++      default:
++        break
++      }
++    }
++  }
+   func configure(
+     androidAutoEnabled: Bool?, carPlayEnabled: Bool?,
+     showInNotification: Bool?, lookaheadCount: Int?,
+@@ -170,11 +198,29 @@ extension TrackPlayerCore {
+     guard let player = self.player else { return }
+     let position = player.currentTime().seconds
+     guard position.isFinite else { return }
+-    var target = max(0, position + offset)
+-    if let duration = player.currentItem?.duration.seconds, duration > 0, duration.isFinite {
+-      target = min(target, duration)
++    let itemDuration = player.currentItem?.duration.seconds
++    let duration =
++      if let itemDuration, itemDuration > 0, itemDuration.isFinite { itemDuration } else { 0.0 }
++    let target = position + offset
++
++    if offset < 0, target < 0, currentTrackIndex > 0 {
++      let prevIndex = currentTrackIndex - 1
++      let prevDur = currentTracks[safe: prevIndex]?.duration ?? 0
++      let remainder = -target
++      _ = skipToIndexInternal(index: prevIndex)
++      seekInternal(position: max(0, prevDur - remainder))
++      return
+     }
+-    seekInternal(position: target)
++    if offset > 0, duration > 0, target > duration, currentTrackIndex < currentTracks.count - 1 {
++      let leftover = target - duration
++      _ = skipToIndexInternal(index: currentTrackIndex + 1)
++      seekInternal(position: leftover)
++      return
++    }
++
++    var clamped = max(0, target)
++    if duration > 0 { clamped = min(clamped, duration) }
++    seekInternal(position: clamped)
+   }
+   func seekBy(offset: Double) async {
+     await withPlayerQueueNoThrow { self.seekByOnQueue(offset: offset) }
+diff --git a/node_modules/react-native-nitro-player/ios/core/TrackPlayerRecovery.swift b/node_modules/react-native-nitro-player/ios/core/TrackPlayerRecovery.swift
+index 8282204..35fd86c 100644
+--- a/node_modules/react-native-nitro-player/ios/core/TrackPlayerRecovery.swift
++++ b/node_modules/react-native-nitro-player/ios/core/TrackPlayerRecovery.swift
+@@ -23,6 +23,14 @@ extension TrackPlayerCore {
+       NitroPlayerLogger.log("TrackPlayerCore", "⚠️ Failed item is not the current item — ignoring")
+       return
+     }
++    if !skipOnSourceError {
++      // Stay on the failed item. Network restore must not auto-resume.
++      player.pause()
++      intendedToPlay = false
++      isRecoveringFromStall = false
++      notifyPlaybackStateChange(.stopped, .error)
++      return
++    }
+     guard let trackId = item.trackId, let track = findTrackById(trackId) else {
+       NitroPlayerLogger.log("TrackPlayerCore", "❌ Failed item has no recoverable track — stopping")
+       isRecoveringFromStall = false
+diff --git a/node_modules/react-native-nitro-player/ios/core/TrackPlayerUrlLoader.swift b/node_modules/react-native-nitro-player/ios/core/TrackPlayerUrlLoader.swift
+index 0760693..84ca820 100644
+--- a/node_modules/react-native-nitro-player/ios/core/TrackPlayerUrlLoader.swift
++++ b/node_modules/react-native-nitro-player/ios/core/TrackPlayerUrlLoader.swift
+@@ -50,8 +50,12 @@ extension TrackPlayerCore {
+           "🔄 Updating current track (\(currentItemFailed ? "failed item" : "no URL")): \(track.id)")
+         return !track.url.isEmpty
+       case track.id == currentTrackId:
++        // Same URL: allow title/artist/artwork updates (e.g. language change).
++        if let current = currentTrack, track.url == current.url, !track.url.isEmpty {
++          return true
++        }
+         NitroPlayerLogger.log("TrackPlayerCore",
+-          "⚠️ Skipping update for currently playing track: \(track.id) (preserves gapless)")
++          "⚠️ Skipping URL change for currently playing track: \(track.id) (preserves gapless)")
+         return false
+       case track.url.isEmpty:
+         NitroPlayerLogger.log("TrackPlayerCore", "⚠️ Skipping track with empty URL: \(track.id)")
+@@ -159,6 +163,7 @@ extension TrackPlayerCore {
+ 
+     NitroPlayerLogger.log("TrackPlayerCore",
+       "✅ Track updates complete - \(affectedPlaylists.count) playlists affected")
++    refreshMediaSession()
+   }
+ 
+   func getTracksNeedingUrlsInternal() -> [TrackItem] {
+diff --git a/node_modules/react-native-nitro-player/ios/media/MediaSessionManager.swift b/node_modules/react-native-nitro-player/ios/media/MediaSessionManager.swift
+index b0d88af..9249016 100644
+--- a/node_modules/react-native-nitro-player/ios/media/MediaSessionManager.swift
++++ b/node_modules/react-native-nitro-player/ios/media/MediaSessionManager.swift
+@@ -28,6 +28,7 @@ class MediaSessionManager {
+   private var showInNotification: Bool = true
+   private var remoteSkipForwardInterval: Double = Constants.defaultRemoteSkipInterval
+   private var remoteSkipBackwardInterval: Double = Constants.defaultRemoteSkipInterval
++  private var remotePrimarySeek: Bool = true
+ 
+   // Tracks the artwork URL currently shown so we can discard stale async loads
+   private var lastArtworkUrl: String?
+@@ -56,7 +57,8 @@ class MediaSessionManager {
+     showInNotification: Bool?,
+     remoteSkipForwardInterval: Double?,
+     remoteSkipBackwardInterval: Double?,
+-    playbackSpeed: Double?
++    playbackSpeed: Double?,
++    remotePrimarySeek: Bool = true
+   ) {
+     if let showInNotification = showInNotification {
+       self.showInNotification = showInNotification
+@@ -70,6 +72,7 @@ class MediaSessionManager {
+     if let interval = sanitizedPositive(remoteSkipBackwardInterval) {
+       self.remoteSkipBackwardInterval = interval
+     }
++    self.remotePrimarySeek = remotePrimarySeek
+     updateSkipCommandIntervals()
+     refresh()
+   }
+@@ -233,19 +236,27 @@ class MediaSessionManager {
+       return .success
+     }
+ 
+-    // Next track
++    // Next / previous: Bluetooth and Control Center share these. When primary
++    // is ±interval they seek; track skip stays in-app (iOS cannot split them).
+     commandCenter.nextTrackCommand.isEnabled = false
+     commandCenter.nextTrackCommand.addTarget { [weak self] _ in
+-      guard let core = self?.trackPlayerCore else { return .commandFailed }
+-      Task { await core.skipToNext() }
++      guard let self, let core = self.trackPlayerCore else { return .commandFailed }
++      if self.remotePrimarySeek {
++        Task { await core.seekBy(offset: self.remoteSkipForwardInterval) }
++      } else {
++        Task { await core.skipToNext() }
++      }
+       return .success
+     }
+ 
+-    // Previous track
+     commandCenter.previousTrackCommand.isEnabled = false
+     commandCenter.previousTrackCommand.addTarget { [weak self] _ in
+-      guard let core = self?.trackPlayerCore else { return .commandFailed }
+-      Task { await core.skipToPrevious() }
++      guard let self, let core = self.trackPlayerCore else { return .commandFailed }
++      if self.remotePrimarySeek {
++        Task { await core.seekBy(offset: -self.remoteSkipBackwardInterval) }
++      } else {
++        Task { await core.skipToPrevious() }
++      }
+       return .success
+     }
+ 
+@@ -319,10 +330,12 @@ class MediaSessionManager {
+     let playerDuration = state.totalDuration
+     let hasDuration = playerDuration > 0 && !playerDuration.isNaN && !playerDuration.isInfinite
+ 
+-    commandCenter.nextTrackCommand.isEnabled = hasCurrentTrack && isNotLast
++    commandCenter.nextTrackCommand.isEnabled = hasCurrentTrack && (remotePrimarySeek || isNotLast)
+     commandCenter.previousTrackCommand.isEnabled = hasCurrentTrack
+-    commandCenter.skipForwardCommand.isEnabled = hasCurrentTrack
+-    commandCenter.skipBackwardCommand.isEnabled = hasCurrentTrack
++    // Skip-interval commands are the Control Center secondary when primary is track skip.
++    // When primary is seek they would duplicate remapped next/prev, so hide them.
++    commandCenter.skipForwardCommand.isEnabled = hasCurrentTrack && !remotePrimarySeek
++    commandCenter.skipBackwardCommand.isEnabled = hasCurrentTrack && !remotePrimarySeek
+     commandCenter.changePlaybackRateCommand.isEnabled = hasCurrentTrack
+     commandCenter.changePlaybackPositionCommand.isEnabled = hasCurrentTrack && hasDuration
+   }

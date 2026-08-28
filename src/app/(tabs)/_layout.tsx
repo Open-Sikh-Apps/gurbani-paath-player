@@ -7,7 +7,7 @@ export default function TabsLayout() {
     <Tabs
       backBehavior="none"
       tabBar={(props) => <AppTabBar {...props} />}
-      screenOptions={{ headerShown: false }}
+      screenOptions={{ headerShown: false, popToTopOnBlur: true }}
     >
       <Tabs.Screen name="(home)" />
       <Tabs.Screen name="(library)" />

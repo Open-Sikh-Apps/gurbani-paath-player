@@ -1,5 +1,5 @@
-import { CataloguePreviewScreen } from "@/screens/catalogue-preview";
+import { HomeScreen } from "@/screens/home";
 
 export default function HomeRoute() {
-  return <CataloguePreviewScreen />;
+  return <HomeScreen />;
 }

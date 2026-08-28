@@ -1,39 +1,54 @@
-import Ionicons from "@expo/vector-icons/Ionicons";
-import { type Href, router, Tabs } from "expo-router";
-import type { ComponentProps } from "react";
+import { StackActions } from "expo-router/react-navigation";
 import { useTranslation } from "react-i18next";
 
+import { AppIcon, type AppIconName } from "@/components/app-icon";
 import { MiniPlayer } from "@/components/mini-player";
 import { useChrome } from "@/hooks/use-chrome";
 import { useExitAppFromTabRoot } from "@/hooks/use-exit-app-from-tab-root";
 import { useThemeColors } from "@/theme/use-theme-colors";
 import { Pressable, Text, View, cn, ui } from "@/tw";
-
-type AppTabBarProps = NonNullable<
-  ComponentProps<typeof Tabs>["tabBar"]
-> extends (props: infer P) => unknown
-  ? P
-  : never;
+import { BottomTabBarProps } from "expo-router/build/react-navigation/bottom-tabs";
+import { useSafeAreaInsets } from "react-native-safe-area-context";
+import { DEBOUNCE_NAVIGATION_DELAY, useDebouncedNavigation } from "@/hooks/use-debounced-navigation";
+import { useDebouncedCallback } from "use-debounce";
 
 type TabName = "(home)" | "(library)";
 
-const TAB_ICONS: Record<
-  TabName,
-  { focused: keyof typeof Ionicons.glyphMap; idle: keyof typeof Ionicons.glyphMap }
-> = {
-  "(home)": { focused: "home", idle: "home-outline" },
-  "(library)": { focused: "library", idle: "library-outline" },
+const TAB_ICONS: Record<TabName, AppIconName> = {
+  "(home)": "home",
+  "(library)": "library-music",
 };
 
 function isTabName(name: string): name is TabName {
   return name === "(home)" || name === "(library)";
 }
 
-export function AppTabBar({ state, navigation, insets }: AppTabBarProps) {
+export function AppTabBar({ state, navigation, insets }: BottomTabBarProps) {
   const { t } = useTranslation();
   const { hit, text, tabIcon, simpleMode } = useChrome();
   const colors = useThemeColors();
+  const safe = useSafeAreaInsets();
   useExitAppFromTabRoot(state.routes[state.index]?.state);
+  const { navigate } = useDebouncedNavigation();
+
+  function popTabToRoot(routeKey: string) {
+    const route = state.routes.find((item) => item.key === routeKey);
+    const nestedKey = route?.state?.key;
+    const nestedIndex = route?.state?.index;
+    if (!nestedKey || typeof nestedIndex !== "number" || nestedIndex < 1) {
+      return;
+    }
+    navigation.dispatch({
+      ...StackActions.popToTop(),
+      target: nestedKey,
+    });
+  }
+
+  const debouncedOpenTab = useDebouncedCallback((routeName: string, routeKey: string, isFocused: boolean) => {
+    openTab(routeName, routeKey, isFocused);
+  }, DEBOUNCE_NAVIGATION_DELAY,
+    { leading: true, trailing: false }
+  );
 
   function openTab(routeName: string, routeKey: string, isFocused: boolean) {
     const event = navigation.emit({
@@ -45,10 +60,10 @@ export function AppTabBar({ state, navigation, insets }: AppTabBarProps) {
       return;
     }
     if (isFocused) {
-      navigation.navigate(routeName, { screen: "index" });
+      popTabToRoot(routeKey);
       return;
     }
-    navigation.navigate(routeName, { screen: "index" });
+    navigation.navigate(routeName);
   }
 
   return (
@@ -56,7 +71,7 @@ export function AppTabBar({ state, navigation, insets }: AppTabBarProps) {
       <MiniPlayer />
       <View
         className={cn("flex-row", simpleMode ? "pt-3" : "pt-1")}
-        style={{ paddingBottom: Math.max(insets.bottom, 8) }}
+        style={{ paddingBottom: Math.max(insets.bottom, safe.bottom, 8) }}
       >
         {state.routes.map((route, index) => {
           if (!isTabName(route.name)) {
@@ -65,7 +80,6 @@ export function AppTabBar({ state, navigation, insets }: AppTabBarProps) {
           const isFocused = state.index === index;
           const labelKey =
             route.name === "(home)" ? "tabs.home" : "tabs.library";
-          const icon = TAB_ICONS[route.name];
           return (
             <Pressable
               key={route.key}
@@ -73,10 +87,10 @@ export function AppTabBar({ state, navigation, insets }: AppTabBarProps) {
               accessibilityState={{ selected: isFocused }}
               accessibilityLabel={t(labelKey)}
               className={cn("flex-1 items-center justify-center px-2", hit)}
-              onPress={() => openTab(route.name, route.key, isFocused)}
+              onPress={() => debouncedOpenTab(route.name, route.key, isFocused)}
             >
-              <Ionicons
-                name={isFocused ? icon.focused : icon.idle}
+              <AppIcon
+                name={TAB_ICONS[route.name]}
                 size={tabIcon}
                 color={isFocused ? colors.accent : colors.textMuted}
               />
@@ -96,10 +110,10 @@ export function AppTabBar({ state, navigation, insets }: AppTabBarProps) {
           accessibilityRole="button"
           accessibilityLabel={t("tabs.settings")}
           className={cn("flex-1 items-center justify-center px-2", hit)}
-          onPress={() => router.navigate("/settings" as Href)}
+          onPress={() => navigate("/settings")}
         >
-          <Ionicons
-            name="settings-outline"
+          <AppIcon
+            name="settings"
             size={tabIcon}
             color={colors.textMuted}
           />

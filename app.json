@@ -19,7 +19,10 @@
       "supportsTablet": true,
       "bundleIdentifier": "com.opensikhapps.gurbanipaathplayer",
       "infoPlist": {
-        "CFBundleAllowMixedLocalizations": true
+        "CFBundleAllowMixedLocalizations": true,
+        "UIBackgroundModes": [
+          "audio"
+        ]
       }
     },
     "android": {
@@ -30,7 +33,14 @@
         "monochromeImage": "./assets/android-icon-monochrome.png"
       },
       "predictiveBackGestureEnabled": false,
-      "package": "com.opensikhapps.gurbanipaathplayer"
+      "package": "com.opensikhapps.gurbanipaathplayer",
+      "allowBackup": false,
+      "permissions": [
+        "android.permission.FOREGROUND_SERVICE",
+        "android.permission.FOREGROUND_SERVICE_MEDIA_PLAYBACK",
+        "android.permission.WAKE_LOCK",
+        "android.permission.POST_NOTIFICATIONS"
+      ]
     },
     "web": {
       "favicon": "./assets/favicon.png"
@@ -40,7 +50,17 @@
       "expo-status-bar",
       "expo-image",
       "expo-font",
-      "expo-localization"
+      "expo-localization",
+      "expo-asset",
+      [
+        "expo-navigation-bar",
+        {
+          "enforceContrast": false,
+          "hidden": false
+        }
+      ],
+      "@react-native-vector-icons/material-icons",
+      "./plugins/with-android-notification-icon"
     ],
     "extra": {
       "router": {},

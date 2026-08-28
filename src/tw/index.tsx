@@ -1,6 +1,4 @@
-import {
-  useNativeVariable as useFunctionalVariable,
-} from "react-native-css";
+import { FlashList as ShopifyFlashList, type FlashListProps } from "@shopify/flash-list";
 import { Link as RouterLink } from "expo-router";
 import React from "react";
 import {
@@ -13,6 +11,9 @@ import {
   View as RNView,
   type ViewStyle,
 } from "react-native";
+import {
+  useNativeVariable as useFunctionalVariable,
+} from "react-native-css";
 
 import { fontFamilyForLocale, fontFamilyBoldForLocale } from "@/i18n/locales";
 import { useResolvedLocale } from "@/hooks/use-resolved-locale";
@@ -82,6 +83,19 @@ export const ScrollView = (
   });
 };
 ScrollView.displayName = "CSS(ScrollView)";
+
+// FlashList ignores contentContainerClassName unless mapped like ScrollView.
+export function FlashList<TItem>(
+  props: FlashListProps<TItem> & {
+    className?: string;
+    contentContainerClassName?: string;
+  },
+) {
+  return useTwCssElement(ShopifyFlashList, props, {
+    className: "style",
+    contentContainerClassName: "contentContainerStyle",
+  });
+}
 
 export const Pressable = (
   props: React.ComponentProps<typeof RNPressable> & { className?: string },

@@ -1,14 +1,27 @@
 import { createMMKV } from "react-native-mmkv";
 import type { StateStorage } from "zustand/middleware";
 
-const mmkv = createMMKV({ id: "preferences" });
+function stateStorageFrom(mmkv: ReturnType<typeof createMMKV>): StateStorage {
+  return {
+    setItem: (name, value) => {
+      mmkv.set(name, value);
+    },
+    getItem: (name) => mmkv.getString(name) ?? null,
+    removeItem: (name) => {
+      mmkv.remove(name);
+    },
+  };
+}
 
-export const mmkvStateStorage: StateStorage = {
-  setItem: (name, value) => {
-    mmkv.set(name, value);
-  },
-  getItem: (name) => mmkv.getString(name) ?? null,
-  removeItem: (name) => {
-    mmkv.remove(name);
-  },
-};
+const preferencesMmkv = createMMKV({ id: "preferences" });
+export const mmkvStateStorage = stateStorageFrom(preferencesMmkv);
+
+export const catalogueMmkv = createMMKV({ id: "catalogue" });
+export const playbackMmkv = createMMKV({ id: "playback" });
+export const playbackStateStorage = stateStorageFrom(playbackMmkv);
+
+const bookmarksMmkv = createMMKV({ id: "bookmarks" });
+export const bookmarksStateStorage = stateStorageFrom(bookmarksMmkv);
+
+const libraryMmkv = createMMKV({ id: "library" });
+export const libraryStateStorage = stateStorageFrom(libraryMmkv);

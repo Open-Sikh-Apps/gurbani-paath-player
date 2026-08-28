@@ -1,0 +1,23 @@
+---
+description: Comment non-obvious generated code with 1–2 sentences of why
+alwaysApply: true
+---
+
+# Code comments
+
+When writing or editing code, put a **1–2 sentence comment immediately above** any non-obvious block: tricky control flow, workarounds, invariants, timing, caching, platform quirks, or anything a later reader would not infer from the names alone.
+
+Comment **why**, not what. Skip comments on straightforward code (simple returns, obvious maps, standard hooks).
+
+```typescript
+// ❌ BAD — narrates the next line
+// Increment i by 1
+i += 1;
+
+// ❌ BAD — no comment on a non-obvious choice
+setTimeout(() => flushResume(), 60_000);
+
+// ✅ GOOD — why, placed above the block
+// Persist on a 1-minute debounce so cloud writes stay off the playback tick.
+setTimeout(() => flushResume(), 60_000);
+```
