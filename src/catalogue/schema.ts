@@ -4,6 +4,13 @@ export const nonEmptyString = v.pipe(v.string(), v.nonEmpty());
 const nonEmptyUrl = v.pipe(nonEmptyString, v.url());
 export const finiteNumber = v.pipe(v.number(), v.finite());
 
+// Published JSON stores CDN-relative paths; hydrate prepends EXPO_PUBLIC_MEDIA_BASE_URL.
+const mediaPathSchema = v.pipe(
+  nonEmptyString,
+  v.regex(/^\/(audio|images)\//),
+);
+export const mediaUrlSchema = v.union([nonEmptyUrl, mediaPathSchema]);
+
 export const l10nTextSchema = v.objectWithRest(
   { en: nonEmptyString },
   nonEmptyString,
@@ -17,7 +24,7 @@ export const l10nUrlSchema = v.objectWithRest(
 const namedEntityBase = {
   id: nonEmptyString,
   name: l10nTextSchema,
-  imageUrl: v.optional(nonEmptyUrl),
+  imageUrl: v.optional(mediaUrlSchema),
   aboutUrl: v.optional(l10nUrlSchema),
 };
 
@@ -49,13 +56,23 @@ const angTimestampSchema = v.object({
 const trackBase = {
   id: nonEmptyString,
   title: l10nTextSchema,
-  url: nonEmptyUrl,
+  url: mediaUrlSchema,
 };
+
+// R2 object Content-Length; new trackId if the file changes. Radio has no finite object.
+export const TRACK_BYTE_SIZE_MAX = 512 * 1024 * 1024;
+export const trackByteSizeSchema = v.pipe(
+  v.number(),
+  v.integer(),
+  v.minValue(1),
+  v.maxValue(TRACK_BYTE_SIZE_MAX),
+);
 
 const sehajPaathTrackSchema = v.object({
   ...trackBase,
   kind: v.literal("sehaj_paath"),
   durationSec: v.pipe(finiteNumber, v.minValue(1)),
+  byteSize: trackByteSizeSchema,
   startAng: v.optional(finiteNumber),
   endAng: v.optional(finiteNumber),
   angTimestamps: v.optional(v.array(angTimestampSchema)),
@@ -65,6 +82,7 @@ const audiobookTrackSchema = v.object({
   ...trackBase,
   kind: v.literal("audiobook"),
   durationSec: v.pipe(finiteNumber, v.minValue(1)),
+  byteSize: trackByteSizeSchema,
   readAlongUrl: v.optional(nonEmptyUrl),
 });
 
@@ -84,7 +102,7 @@ const collectionBase = {
   title: v.optional(l10nTextSchema),
   authorId: v.optional(nonEmptyString),
   languages: v.pipe(v.array(nonEmptyString), v.nonEmpty()),
-  artworkUrl: v.optional(nonEmptyString),
+  artworkUrl: v.optional(mediaUrlSchema),
   downloadable: v.boolean(),
 };
 
@@ -114,7 +132,7 @@ export const collectionSchema = v.variant("kind", [
 
 export const catalogueObjectSchema = v.object({
   version: finiteNumber,
-  heroImageUrl: nonEmptyUrl,
+  heroImageUrl: mediaUrlSchema,
   authors: v.array(namedEntitySchema),
   reciters: v.array(namedEntitySchema),
   scriptures: v.array(scriptureSchema),
