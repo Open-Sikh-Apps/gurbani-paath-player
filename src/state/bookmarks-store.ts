@@ -15,6 +15,7 @@ export type Bookmark = {
 
 type BookmarksState = {
   items: Bookmark[];
+  byAlbumId: Record<string, Bookmark[]>;
   addBookmark: (input: {
     albumId: string;
     trackId: string;
@@ -25,13 +26,33 @@ type BookmarksState = {
   removeBookmark: (id: string) => void;
 };
 
+const EMPTY_BOOKMARKS: Bookmark[] = [];
+
+function indexByAlbumId(items: Bookmark[]): Record<string, Bookmark[]> {
+  const byAlbumId: Record<string, Bookmark[]> = {};
+  for (const item of items) {
+    const list = byAlbumId[item.albumId];
+    if (list) {
+      list.push(item);
+    } else {
+      byAlbumId[item.albumId] = [item];
+    }
+  }
+  return byAlbumId;
+}
+
+function withIndex(items: Bookmark[]): Pick<BookmarksState, "items" | "byAlbumId"> {
+  return { items, byAlbumId: indexByAlbumId(items) };
+}
+
 export const useBookmarksStore = create<BookmarksState>()(
   persist(
     (set) => ({
       items: [],
+      byAlbumId: {},
       addBookmark: ({ albumId, trackId, positionSec, note }) =>
-        set((state) => ({
-          items: [
+        set((state) =>
+          withIndex([
             ...state.items,
             {
               id: randomUUID(),
@@ -41,35 +62,44 @@ export const useBookmarksStore = create<BookmarksState>()(
               note: note?.trim() ? note.trim() : undefined,
               updatedAt: Date.now(),
             },
-          ],
-        })),
+          ]),
+        ),
       updateNote: (id, note) =>
-        set((state) => ({
-          items: state.items.map((item) =>
-            item.id === id
-              ? {
-                  ...item,
-                  note: note.trim() === "" ? undefined : note,
-                  updatedAt: Date.now(),
-                }
-              : item,
+        set((state) =>
+          withIndex(
+            state.items.map((item) =>
+              item.id === id
+                ? {
+                    ...item,
+                    note: note.trim() === "" ? undefined : note,
+                    updatedAt: Date.now(),
+                  }
+                : item,
+            ),
           ),
-        })),
+        ),
       removeBookmark: (id) =>
-        set((state) => ({
-          items: state.items.filter((item) => item.id !== id),
-        })),
+        set((state) =>
+          withIndex(state.items.filter((item) => item.id !== id)),
+        ),
     }),
     {
       name: "bookmarks",
       storage: createJSONStorage(() => bookmarksStateStorage),
+      // byAlbumId is derived; persisting it would drift from items after a partial write.
       partialize: (state) => ({ items: state.items }),
+      onRehydrateStorage: () => (state) => {
+        if (!state) {
+          return;
+        }
+        // Persist skipped byAlbumId; rebuild it or album screens see {}.
+        useBookmarksStore.setState(withIndex(state.items));
+      },
     },
   ),
 );
 
 export function bookmarksForAlbum(albumId: string): Bookmark[] {
-  return useBookmarksStore
-    .getState()
-    .items.filter((item) => item.albumId === albumId);
+  // Stable empty array so hook subscribers do not re-render on every missing album.
+  return useBookmarksStore.getState().byAlbumId[albumId] ?? EMPTY_BOOKMARKS;
 }

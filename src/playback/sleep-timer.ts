@@ -29,6 +29,7 @@ export const useSleepTimerStore = create<SleepTimerState>(() => ({ ...idle }));
 
 let started = false;
 let tickTimer: ReturnType<typeof setInterval> | null = null;
+let durationFireTimer: ReturnType<typeof setTimeout> | null = null;
 
 function remainingContentSec(
   status: PlayerStatus,
@@ -48,6 +49,7 @@ function remainingContentSec(
 }
 
 function wallSec(contentSec: number, rate: number): number {
+  // Label and deadline are wall-clock; at 1.5× remaining audio is shorter than remainingSec.
   return contentSec / Math.max(rate, PLAYBACK_RATE_MIN);
 }
 
@@ -58,6 +60,24 @@ function stopTicker(): void {
   }
 }
 
+function clearDurationFire(): void {
+  if (durationFireTimer) {
+    clearTimeout(durationFireTimer);
+    durationFireTimer = null;
+  }
+}
+
+function armDurationFire(deadlineAt: number): void {
+  clearDurationFire();
+  const ms = Math.max(0, deadlineAt - Date.now());
+  durationFireTimer = setTimeout(() => {
+    durationFireTimer = null;
+    if (useSleepTimerStore.getState().kind === "duration") {
+      fire();
+    }
+  }, ms);
+}
+
 function startTicker(): void {
   if (tickTimer) {
     return;
@@ -66,6 +86,8 @@ function startTicker(): void {
 }
 
 function fire(): void {
+  clearDurationFire();
+  // Engine pause (not TrackPlayer) so the 2s rewind and resume persist still run.
   getPlayerEngine().pause();
   useSleepTimerStore.setState({ ...idle });
   stopTicker();
@@ -164,20 +186,24 @@ export function initSleepTimer(): void {
     return;
   }
   started = true;
+  // Track changes must fire immediately; the 1s interval only drives the remaining-time label.
   usePlaybackStore.subscribe(() => tick());
   AppState.addEventListener("change", (state) => {
     if (state === "active") {
+      // Interval can stall in the background; catch up when the UI is visible again.
       tick();
     }
   });
 }
 
 export function cancelSleepTimer(): void {
+  clearDurationFire();
   useSleepTimerStore.setState({ ...idle });
   stopTicker();
 }
 
 export function armSleepTrack(): void {
+  clearDurationFire();
   const status = usePlaybackStore.getState();
   const content = remainingContentSec(status, "track");
   const remaining = wallSec(content, status.rate);
@@ -193,6 +219,7 @@ export function armSleepTrack(): void {
 }
 
 export function armSleepAlbum(): void {
+  clearDurationFire();
   const status = usePlaybackStore.getState();
   const content = remainingContentSec(status, "album");
   const remaining = wallSec(content, status.rate);
@@ -212,18 +239,24 @@ export function armSleepDuration(hours: number, minutes: number): void {
   if (totalSec <= 0) {
     return;
   }
+  const deadlineAt = Date.now() + totalSec * 1000;
   useSleepTimerStore.setState({
     kind: "duration",
     remainingSec: totalSec,
     remainingTrackEnds: 0,
-    deadlineAt: Date.now() + totalSec * 1000,
+    deadlineAt,
     armedTrackId: null,
     armedIndex: null,
   });
+  // Interval can stall while the screen is off; the deadline timeout is the
+  // pause. Keep the 1s tick only for the remaining-time label.
+  armDurationFire(deadlineAt);
   startTicker();
 }
 
 export function armSleepTracks(count: number): void {
+  clearDurationFire();
+  // Count includes the current track's remaining end (1 = this track, same as armSleepTrack).
   const n = Math.max(1, Math.floor(count));
   const status = usePlaybackStore.getState();
   const content = remainingContentSec(status, "track");

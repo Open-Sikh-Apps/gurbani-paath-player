@@ -8,7 +8,7 @@ alwaysApply: false
 
 Editorial strings use `L10nText` (`en` required; any other locale key optional). Resolve `locale → en → first key`. Chrome copy (Play, Settings) belongs in i18next, not the catalogue. Validate JSON with Valibot in `src/catalogue/schema.ts`.
 
-Host: Cloudflare Pages Direct Upload from `Open-Sikh-Apps/gurbani-paath-player-catalogue` (Wrangler CI, not Connect-to-Git). Probe `catalogue.version.json`, then `catalogue.json?v={version}` on mismatch. Validate with the same Valibot schema **in the catalogue repo CI** before upload (checkouts this app and runs `npx tsx scripts/validate-catalogue.ts`). On device: off-thread `JSON.parse` plus a cheap shape check; persist the downloaded text in MMKV (`id: "catalogue"`, `format` key). Do not run full Valibot on device. Refresh on cold start, Home pull-to-refresh, and Home overflow. The app never calls Sanity.
+Host: Cloudflare Pages Direct Upload from `Open-Sikh-Apps/gurbani-paath-player-catalogue` (Wrangler CI, not Connect-to-Git). Probe `catalogue.version.json`, then `catalogue.json?v={version}` on mismatch. Catalogue repo CI checkouts this app, fills missing `byteSize` via HEAD (`scripts/fill-catalogue-bytesize.ts`), then Valibot (`npx tsx scripts/validate-catalogue.ts`) before upload. On device: off-thread `JSON.parse` plus a cheap shape check; persist the downloaded text in MMKV (`id: "catalogue"`, `format` key). Do not run full Valibot on device. Refresh on cold start, Home pull-to-refresh, and Home overflow. `EXPO_PUBLIC_USE_MOCK_CATALOGUE` (`1` / `true` / `yes`) uses only bundled `mock-catalogue.json` and skips Pages plus disk cache; it is not tied to `__DEV__`. The app never calls Sanity. GitHub-edited `catalogue.json` is enough for V1.
 
 ```ts
 type L10nText = { en: string; [locale: string]: string };
@@ -31,7 +31,7 @@ type Reciter = {
 type Scripture = {
   id: string;
   name: L10nText;
-  imageUrl?: string;
+  imageUrl?: string; // `/images/…` or https
   aboutUrl?: L10nUrl;
   sttmCoSlug?: string; // https://sttm.co/{sttmCoSlug}/{startAng}
 };
@@ -52,12 +52,13 @@ type ResourceItem = {
 type TrackBase = {
   id: string;
   title: L10nText;
-  url: string; // https://media.…/audio/{collectionId}/{trackId}.mp3
+  url: string; // `/audio/{collectionId}/{trackId}.mp3` or absolute https; app prepends EXPO_PUBLIC_MEDIA_BASE_URL for paths
 };
 
 type SehajPaathTrack = TrackBase & {
   kind: "sehaj_paath";
   durationSec: number;
+  byteSize: number; // R2 object Content-Length; ≤ 512 MiB
   startAng?: number;
   endAng?: number;
   angTimestamps?: { tSec: number; ang: number }[];
@@ -66,6 +67,7 @@ type SehajPaathTrack = TrackBase & {
 type AudiobookTrack = TrackBase & {
   kind: "audiobook";
   durationSec: number;
+  byteSize: number; // R2 object Content-Length; ≤ 512 MiB
   readAlongUrl?: string;
 };
 
@@ -109,7 +111,7 @@ type Collection = SehajPaathCollection | AudiobookCollection | RadioCollection;
 
 type Catalogue = {
   version: number;
-  heroImageUrl: string; // Maharaj's saroop on Home; file on R2
+  heroImageUrl: string;
   authors: Author[];
   reciters: Reciter[];
   scriptures: Scripture[];
@@ -121,6 +123,6 @@ type Catalogue = {
 
 Every `id` (Author, Reciter, Scripture, Collection, Track, ResourceSection, ResourceItem) must be unique across the whole catalogue. Prefer UUID.
 
-`durationSec` is required on `sehaj_paath` and `audiobook` tracks. Radio tracks omit it — live streams have no finite length.
+`durationSec` and `byteSize` are required on `sehaj_paath` and `audiobook` tracks. `byteSize` is the stored object’s Content-Length (catalogue CI HEADs the URL if omitted; do not guess from bitrate). Radio tracks omit both — live streams have no finite length or file size.
 
-V1 Home lists `kind === "sehaj_paath"` only, labeled by reciter, not collection title. `sehaj_paath` requires `reciterId` and `scriptureId`. Keep `kind` / `languages` / `scriptureId` for later filters. Group Resources by `sectionId` → `ResourceSection`.
+V1 Home lists `kind === "sehaj_paath"` only, grouped by `scriptureId` (scripture title + image), then reciter-named collections. `sehaj_paath` requires `reciterId` and `scriptureId`. Keep `kind` / `languages` / `scriptureId` for later filters. Group Resources by `sectionId` → `ResourceSection`.

@@ -33,6 +33,13 @@ yarn-error.*
 # local env files
 .env
 .env*.local
+.env.sentry-build-plugin
+
+# Firebase native config (drop in locally before a native build)
+google-services.json
+GoogleService-Info.plist
+google-services-dev.json
+GoogleService-Info-dev.plist
 
 # typescript
 *.tsbuildinfo
@@ -43,3 +50,11 @@ yarn-error.*
 
 # build apk files
 build-*.apk
+
+# expo-updates export used by scripts/publish-update.ts
+dist-update/
+
+# local khajana tagging (mutagen)
+.venv-khajana/
+
+.wrangler

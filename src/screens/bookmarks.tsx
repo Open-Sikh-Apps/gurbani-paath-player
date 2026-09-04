@@ -6,18 +6,24 @@ import { Alert } from "react-native";
 import {
   getCollectionById,
   getReciterById,
+  getScriptureById,
+  getTrackInCollection,
   resolveL10n,
   useCatalogueStore,
   type SehajPaathCollection,
 } from "@/catalogue";
+import { confirmRemove } from "@/components/album-action-row";
+import { playableUrlFor, useIsOnline } from "@/downloads";
 import { AppIcon } from "@/components/app-icon";
 import { HeaderCloseButton } from "@/components/header-close-button";
 import { OverflowMenu } from "@/components/overflow-menu";
 import { useChrome } from "@/hooks/use-chrome";
+import { LIST_PLAY_PRESS_DELAY_MS } from "@/hooks/list-play-press";
 import { useDebouncedNavigation } from "@/hooks/use-debounced-navigation";
 import { useResolvedLocale } from "@/hooks/use-resolved-locale";
 import {
   formatDuration,
+  getSessionTrack,
   playAlbum,
   sessionFromSehajPaath,
   usePlaybackStore,
@@ -28,20 +34,29 @@ import {
 } from "@/state/bookmarks-store";
 import { useThemeColors } from "@/theme/use-theme-colors";
 import { FlashList, Pressable, Text, View, cn, ui } from "@/tw";
+import { showToast } from "@/feedback/toast";
+
+// Stable empty array so the Zustand selector does not churn every render.
+const EMPTY_ALBUM_BOOKMARKS: Bookmark[] = [];
 
 export function BookmarksScreen() {
   const { t } = useTranslation();
   const locale = useResolvedLocale();
-  const { hit, text, body } = useChrome();
+  const { hit, text, body, tabIcon } = useChrome();
   const colors = useThemeColors();
   const { navigate } = useDebouncedNavigation();
   const pathname = usePathname();
   const params = useLocalSearchParams<{ albumId?: string | string[] }>();
   const paramAlbumId = Array.isArray(params.albumId) ? params.albumId[0] : params.albumId;
   const sessionAlbumId = usePlaybackStore((state) => state.session?.albumId);
+  // Nested Now Playing list has no albumId param; fall back to the live session.
   const albumId = paramAlbumId ?? sessionAlbumId;
+  const online = useIsOnline();
   const session = usePlaybackStore((state) => state.session);
-  const items = useBookmarksStore((state) => state.items);
+  const albumBookmarks = useBookmarksStore(
+    (state) =>
+      (albumId ? state.byAlbumId[albumId] : undefined) ?? EMPTY_ALBUM_BOOKMARKS,
+  );
   const removeBookmark = useBookmarksStore((state) => state.removeBookmark);
   const catalogue = useCatalogueStore((state) => state.catalogue);
 
@@ -58,58 +73,85 @@ export function BookmarksScreen() {
         ? collection.tracks.map((track, index) => [track.id, index])
         : [],
     );
-    return items
-      .filter((item) => item.albumId === albumId)
-      .slice()
-      .sort((left, right) => {
-        const leftIndex =
-          sessionOrder.get(left.trackId) ??
-          catalogueOrder.get(left.trackId) ??
-          Number.MAX_SAFE_INTEGER;
-        const rightIndex =
-          sessionOrder.get(right.trackId) ??
-          catalogueOrder.get(right.trackId) ??
-          Number.MAX_SAFE_INTEGER;
-        if (leftIndex !== rightIndex) {
-          return leftIndex - rightIndex;
-        }
-        return left.positionSec - right.positionSec;
-      });
-  }, [albumId, catalogue, items, session]);
+    // Session order first, then catalogue; missing tracks sink to the end.
+    return albumBookmarks.slice().sort((left, right) => {
+      const leftIndex =
+        sessionOrder.get(left.trackId) ??
+        catalogueOrder.get(left.trackId) ??
+        Number.MAX_SAFE_INTEGER;
+      const rightIndex =
+        sessionOrder.get(right.trackId) ??
+        catalogueOrder.get(right.trackId) ??
+        Number.MAX_SAFE_INTEGER;
+      if (leftIndex !== rightIndex) {
+        return leftIndex - rightIndex;
+      }
+      return left.positionSec - right.positionSec;
+    });
+  }, [albumId, albumBookmarks, catalogue, session]);
 
   function titleFor(bookmark: Bookmark): string {
-    const sessionTrack = session?.tracks.find((track) => track.id === bookmark.trackId);
+    const sessionTrack = session
+      ? getSessionTrack(session, bookmark.trackId)
+      : undefined;
     if (sessionTrack) {
       return resolveL10n(sessionTrack.title, locale);
     }
-    const collection = getCollectionById(catalogue, bookmark.albumId);
-    if (collection?.kind === "sehaj_paath") {
-      const track = collection.tracks.find((item) => item.id === bookmark.trackId);
-      if (track) {
-        return resolveL10n(track.title, locale);
-      }
+    const track = getTrackInCollection(catalogue, bookmark.albumId, bookmark.trackId);
+    if (track) {
+      return resolveL10n(track.title, locale);
     }
     return t("bookmark.unavailable");
   }
 
   function isPlayable(bookmark: Bookmark): boolean {
-    if (session?.tracks.some((track) => track.id === bookmark.trackId)) {
+    if (session && getSessionTrack(session, bookmark.trackId)) {
       return true;
     }
-    const collection = getCollectionById(catalogue, bookmark.albumId);
-    return (
-      collection?.kind === "sehaj_paath" &&
-      collection.tracks.some((track) => track.id === bookmark.trackId)
+    return getTrackInCollection(catalogue, bookmark.albumId, bookmark.trackId) != null;
+  }
+
+  function isAvailableOffline(bookmark: Bookmark): boolean {
+    const sessionTrack = session
+      ? getSessionTrack(session, bookmark.trackId)
+      : undefined;
+    if (sessionTrack) {
+      return playableUrlFor(sessionTrack.id, sessionTrack.remoteUrl) != null;
+    }
+    const track = getTrackInCollection(
+      catalogue,
+      bookmark.albumId,
+      bookmark.trackId,
     );
+    if (!track) {
+      return false;
+    }
+    return playableUrlFor(track.id, track.url) != null;
+  }
+
+  function openPlayerIfNeeded(): void {
+    // Already on the Now Playing stack (nested bookmarks) — do not push another modal.
+    if (pathname.startsWith("/now-playing")) {
+      return;
+    }
+    navigate("/now-playing");
   }
 
   async function playBookmark(bookmark: Bookmark): Promise<void> {
     const live = usePlaybackStore.getState();
-    if (live.session?.tracks.some((track) => track.id === bookmark.trackId)) {
-      await playAlbum(live.session, {
+    // Prefer the frozen session so a catalogue refresh cannot rebuild the live queue.
+    if (live.session && getSessionTrack(live.session, bookmark.trackId)) {
+      const started = await playAlbum(live.session, {
         trackId: bookmark.trackId,
         positionSec: bookmark.positionSec,
       });
+      if (started) {
+        // Already on the player — skip a second modal; toast so the seek is noticeable.
+        if (pathname.startsWith("/now-playing")) {
+          showToast(t("bookmark.resumed"));
+        }
+        openPlayerIfNeeded();
+      }
       return;
     }
     const collection = getCollectionById(catalogue, bookmark.albumId);
@@ -117,16 +159,26 @@ export function BookmarksScreen() {
       collection?.kind === "sehaj_paath"
         ? (collection as SehajPaathCollection)
         : undefined;
-    const track = sehaj?.tracks.find((item) => item.id === bookmark.trackId);
+    const track = getTrackInCollection(catalogue, bookmark.albumId, bookmark.trackId);
     if (!sehaj || !track) {
       Alert.alert(t("bookmark.unavailable"));
       return;
     }
     const reciter = getReciterById(catalogue, sehaj.reciterId);
-    await playAlbum(sessionFromSehajPaath(sehaj, reciter), {
-      trackId: bookmark.trackId,
-      positionSec: bookmark.positionSec,
-    });
+    const scripture = getScriptureById(catalogue, sehaj.scriptureId);
+    const started = await playAlbum(
+      sessionFromSehajPaath(sehaj, reciter, scripture),
+      {
+        trackId: bookmark.trackId,
+        positionSec: bookmark.positionSec,
+      },
+    );
+    if (started) {
+      if (pathname.startsWith("/now-playing")) {
+        showToast(t("bookmark.resumed"));
+      }
+      openPlayerIfNeeded();
+    }
   }
 
   return (
@@ -152,21 +204,26 @@ export function BookmarksScreen() {
             contentContainerClassName="px-6 py-6"
             renderItem={({ item }) => {
               const playable = isPlayable(item);
+              const muted = playable && !online && !isAvailableOffline(item);
+              const canPlay = playable && !muted;
               return (
-                <View
+                <Pressable
+                  accessibilityRole="button"
+                  accessibilityLabel={titleFor(item)}
+                  accessibilityState={{ disabled: !canPlay }}
+                  unstable_pressDelay={LIST_PLAY_PRESS_DELAY_MS}
+                  disabled={!canPlay}
+                  onPress={() => void playBookmark(item)}
                   className={cn(
                     "mb-4 gap-2 rounded-2xl border px-4 py-4",
                     ui.border,
                     ui.surface,
+                    hit,
+                    muted && "opacity-40",
                   )}
                 >
-                  <Pressable
-                    accessibilityRole="button"
-                    accessibilityLabel={titleFor(item)}
-                    className={hit}
-                    onPress={() => void playBookmark(item)}
-                  >
-                    <Text className={cn(playable ? ui.text : ui.muted, text)}>
+                  <View>
+                    <Text className={cn(canPlay ? ui.text : ui.muted, text)}>
                       {titleFor(item)}
                     </Text>
                     <Text className={cn("mt-1", ui.muted, text)}>
@@ -174,7 +231,7 @@ export function BookmarksScreen() {
                         ? formatDuration(item.positionSec)
                         : t("bookmark.unavailable")}
                     </Text>
-                  </Pressable>
+                  </View>
                   {item.note ? (
                     <Text className={cn("w-full", ui.muted, text)}>{item.note}</Text>
                   ) : null}
@@ -184,6 +241,7 @@ export function BookmarksScreen() {
                       accessibilityLabel={t("bookmark.edit")}
                       className={cn("flex-row items-center gap-2", hit)}
                       onPress={() => {
+                        // Stay on this stack so back does not jump the player modal to root bookmarks.
                         const notePath = pathname.startsWith("/now-playing")
                           ? "/now-playing/bookmark-note"
                           : "/bookmarks/bookmark-note";
@@ -192,20 +250,28 @@ export function BookmarksScreen() {
                         );
                       }}
                     >
-                      <AppIcon name="edit" size={20} color={colors.accent} />
+                      <AppIcon name="edit" size={tabIcon} color={colors.accent} />
                       <Text className={cn(ui.accent, text)}>{t("bookmark.edit")}</Text>
                     </Pressable>
                     <Pressable
                       accessibilityRole="button"
                       accessibilityLabel={t("bookmark.delete")}
                       className={cn("flex-row items-center gap-2", hit)}
-                      onPress={() => removeBookmark(item.id)}
+                      onPress={() => {
+                        confirmRemove({
+                          title: t("bookmark.deleteTitle"),
+                          body: t("bookmark.deleteBody"),
+                          confirm: t("bookmark.delete"),
+                          cancel: t("bookmark.cancel"),
+                          onConfirm: () => removeBookmark(item.id),
+                        });
+                      }}
                     >
-                      <AppIcon name="delete" size={20} color={colors.accent} />
+                      <AppIcon name="delete" size={tabIcon} color={colors.accent} />
                       <Text className={cn(ui.accent, text)}>{t("bookmark.delete")}</Text>
                     </Pressable>
                   </View>
-                </View>
+                </Pressable>
               );
             }}
           />

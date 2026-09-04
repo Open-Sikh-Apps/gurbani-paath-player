@@ -6,15 +6,20 @@ export function useSimpleMode() {
 
 export function useChrome() {
   const simpleMode = useSimpleMode();
+  // Hit/text are NativeWind; icon sizes are dp because vector icons ignore className. Simple-mode hit is 64 so rows stay ≥48.
   return {
     simpleMode,
-    hit: simpleMode ? "min-h-14" : "min-h-12",
-    text: simpleMode ? "text-lg" : "text-base",
-    title: simpleMode ? "text-2xl font-semibold" : "text-xl font-semibold",
-    body: simpleMode ? "text-lg" : "text-base",
-    tabIcon: simpleMode ? 28 : 22,
-    playerIcon: simpleMode ? 36 : 28,
-    playerPlayIcon: simpleMode ? 64 : 52,
+    hit: simpleMode ? "min-h-16" : "min-h-14",
+    text: simpleMode ? "text-xl" : "text-lg",
+    title: simpleMode ? "text-3xl font-semibold" : "text-2xl font-semibold",
+    subtitle: simpleMode ? "text-2xl" : "text-xl",
+    body: simpleMode ? "text-xl" : "text-lg",
+    bodySmall: simpleMode ? "text-lg" : "text-base",
+    // nowPlayingActionText: simpleMode ? "text-base" : "text-xs",
+    nowPlayingActionText: simpleMode ? "text-xs font-semibold" : "text-xs",
+    tabIcon: simpleMode ? 32 : 26,
+    playerIcon: simpleMode ? 40 : 32,
+    playerPlayIcon: simpleMode ? 68 : 56,
     scrubberTrack: simpleMode ? "h-4" : "h-1.5",
     scrubberThumb: simpleMode ? 28 : 16,
   } as const;

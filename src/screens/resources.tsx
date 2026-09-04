@@ -2,7 +2,7 @@ import * as Linking from "expo-linking";
 import { useMemo } from "react";
 import { useTranslation } from "react-i18next";
 
-import { resolveL10n, useCatalogueStore } from "@/catalogue";
+import { resolveL10n, getResourcesForSection, useCatalogueStore } from "@/catalogue";
 import { useChrome } from "@/hooks/use-chrome";
 import { useResolvedLocale } from "@/hooks/use-resolved-locale";
 import { FlashList, Pressable, Text, View, cn, ui } from "@/tw";
@@ -23,6 +23,7 @@ export function ResourcesScreen() {
   const locale = useResolvedLocale();
   const catalogue = useCatalogueStore((state) => state.catalogue);
 
+  // One FlashList with getItemType headers; nested section lists would fight scroll.
   const rows = useMemo(() => {
     const next: ResourceRow[] = [];
     for (const section of catalogue.resourceSections) {
@@ -31,9 +32,7 @@ export function ResourcesScreen() {
         id: section.id,
         title: resolveL10n(section.title, locale),
       });
-      for (const item of catalogue.resources.filter(
-        (resource) => resource.sectionId === section.id,
-      )) {
+      for (const item of getResourcesForSection(catalogue, section.id)) {
         next.push({
           type: "item",
           id: item.id,

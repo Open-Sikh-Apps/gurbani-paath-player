@@ -1,10 +1,13 @@
 import { useTranslation } from "react-i18next";
 import { useState } from "react";
 
+import { requestDownloadNotificationPermission } from "@/downloads";
+import { AppToastSlot } from "@/feedback/toast";
 import { useChrome } from "@/hooks/use-chrome";
 import { useResolvedLocale } from "@/hooks/use-resolved-locale";
 import { useSafeBottomPad } from "@/hooks/use-safe-bottom-pad";
 import { UI_LOCALES } from "@/i18n/locales";
+import { requestNotificationPermission } from "@/playback";
 import { usePreferencesStore } from "@/state/preferences-store";
 import { Pressable, ScrollView, Text, View, cn, ui } from "@/tw";
 
@@ -15,15 +18,17 @@ export function WizardScreen() {
   const setLocale = usePreferencesStore((state) => state.setLocale);
   const setSimpleMode = usePreferencesStore((state) => state.setSimpleMode);
   const completeWizard = usePreferencesStore((state) => state.completeWizard);
-  const [step, setStep] = useState<0 | 1>(0);
+  const [step, setStep] = useState<0 | 1 | 2>(0);
   const bottomPad = useSafeBottomPad();
 
   return (
+    <View className="relative flex-1">
     <ScrollView
       className={cn("flex-1", ui.page)}
       contentContainerClassName="flex-grow px-6 py-8"
       style={{ paddingBottom: bottomPad }}
     >
+      {/* Language first so Simple mode and notification copy are already localized. */}
       {step === 0 ? (
         <View className="flex-1 justify-center gap-6">
           <View className="gap-2">
@@ -35,6 +40,7 @@ export function WizardScreen() {
             </Text>
           </View>
           <View className="gap-3">
+            {/* Wizard requires an explicit language; Settings can later pick System. */}
             {UI_LOCALES.map((item) => {
               const selected = item.code === locale;
               return (
@@ -76,7 +82,7 @@ export function WizardScreen() {
             </Text>
           </Pressable>
         </View>
-      ) : (
+      ) : step === 1 ? (
         <View className="flex-1 justify-center gap-6">
           <View className="gap-2">
             <Text className={cn(ui.text, title)}>
@@ -135,7 +141,38 @@ export function WizardScreen() {
               hit,
               ui.fillAccent,
             )}
-            onPress={() => completeWizard({ locale, simpleMode })}
+            onPress={() => setStep(2)}
+          >
+            <Text className={cn("font-semibold", ui.accentFg, text)}>
+              {t("wizard.continue")}
+            </Text>
+          </Pressable>
+        </View>
+      ) : (
+        <View className="flex-1 justify-center gap-6">
+          <View className="gap-2">
+            <Text className={cn(ui.text, title)}>
+              {t("wizard.notificationsTitle")}
+            </Text>
+            <Text className={cn(ui.muted, body)}>
+              {t("wizard.notificationsBody")}
+            </Text>
+          </View>
+          <Pressable
+            accessibilityRole="button"
+            className={cn(
+              "items-center justify-center rounded-2xl px-4",
+              hit,
+              ui.fillAccent,
+            )}
+            onPress={() => {
+              void (async () => {
+                // Playback shade + download progress both need a grant; do not complete until both run.
+                await requestDownloadNotificationPermission();
+                await requestNotificationPermission();
+                completeWizard({ locale, simpleMode });
+              })();
+            }}
           >
             <Text className={cn("font-semibold", ui.accentFg, text)}>
               {t("wizard.done")}
@@ -144,5 +181,8 @@ export function WizardScreen() {
         </View>
       )}
     </ScrollView>
+    {/* Wizard is outside the tab bar, so it needs its own slot (padSafeArea docks above the home indicator). */}
+    <AppToastSlot padSafeArea />
+    </View>
   );
 }

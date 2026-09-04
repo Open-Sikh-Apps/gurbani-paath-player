@@ -1,0 +1,168 @@
+import { Alert, Platform } from "react-native";
+import * as Updates from "expo-updates";
+
+import { reportOtaFetchFailure } from "@/crash/report";
+import {
+  cancelAllInFlightDownloads,
+  hasInFlightDownloads,
+  isOnline,
+} from "@/downloads";
+import i18n from "@/i18n";
+import { pausePlayback, usePlaybackStore } from "@/playback";
+import { useOtaApplyingStore } from "@/updates/applying";
+
+/** One in-flight Worker check per JS lifetime so cold start and apply share a result. */
+let probePromise: Promise<boolean> | null = null;
+
+function isPlaybackBusy(): boolean {
+  const status = usePlaybackStore.getState();
+  return Boolean(status.playing || status.buffering);
+}
+
+function updatesReady(): boolean {
+  return Platform.OS !== "web" && Updates.isEnabled;
+}
+
+/**
+ * Fetch + reload. Overlay stays up on purpose: a `finally` that clears it can
+ * flash a blank frame before `reloadAsync` tears down JS.
+ */
+async function applyUpdate(): Promise<boolean> {
+  useOtaApplyingStore.getState().setApplying(true);
+  try {
+    // Pause first so resume is flushed to MMKV before the JS runtime is torn down.
+    pausePlayback();
+    await cancelAllInFlightDownloads();
+    const result = await Updates.fetchUpdateAsync();
+    if (!result.isNew) {
+      useOtaApplyingStore.getState().setApplying(false);
+      return false;
+    }
+    await Updates.reloadAsync();
+    return true;
+  } catch (error) {
+    useOtaApplyingStore.getState().setApplying(false);
+    await reportOtaFetchFailure(error);
+    return false;
+  }
+}
+
+function promptBusyApply(): void {
+  Alert.alert(i18n.t("ota.busyTitle"), i18n.t("ota.busyBody"), [
+    { text: i18n.t("ota.cancel"), style: "cancel" },
+    {
+      text: i18n.t("ota.apply"),
+      onPress: () => {
+        void applyUpdate().then((ok) => {
+          if (!ok) {
+            Alert.alert(i18n.t("ota.check"), i18n.t("ota.failed"));
+          }
+        });
+      },
+    },
+  ]);
+}
+
+/** Idle cold-start only. One OK — not a second consent, just a wait heads-up. */
+function promptSilentApply(): Promise<void> {
+  return new Promise((resolve) => {
+    Alert.alert(
+      i18n.t("ota.silentTitle"),
+      i18n.t("ota.silentBody"),
+      [
+        {
+          text: i18n.t("ota.silentOk"),
+          onPress: () => resolve(),
+        },
+      ],
+      { cancelable: false },
+    );
+  });
+}
+
+/** Manifest check only. Safe to start as soon as NetInfo says online. */
+export function probeAppUpdate(): Promise<boolean> {
+  if (probePromise) {
+    return probePromise;
+  }
+  probePromise = (async () => {
+    if (!updatesReady() || !isOnline()) {
+      return false;
+    }
+    try {
+      const check = await Updates.checkForUpdateAsync();
+      return check.isAvailable;
+    } catch {
+      return false;
+    }
+  })();
+  return probePromise;
+}
+
+export type ApplyPendingResult = "applied" | "busy" | "none";
+
+export type ApplyPendingOptions = {
+  promptIfBusy: boolean;
+  /** Cold-start idle: warn before fetch. Settings already tapped Check — skip. */
+  silentHeadsUp: boolean;
+};
+
+/**
+ * Uses the in-flight probe. Call after MMKV + downloads init so busy/cancel
+ * match native jobs. Does not fetch until the user has seen the idle heads-up
+ * or confirmed the busy dialog.
+ */
+export async function applyPendingAppUpdate(
+  options: ApplyPendingOptions,
+): Promise<ApplyPendingResult> {
+  const available = await probeAppUpdate();
+  if (!available) {
+    return "none";
+  }
+  const busy = isPlaybackBusy() || hasInFlightDownloads();
+  if (busy) {
+    if (options.promptIfBusy) {
+      promptBusyApply();
+    }
+    return "busy";
+  }
+  if (options.silentHeadsUp) {
+    await promptSilentApply();
+  }
+  const reloaded = await applyUpdate();
+  return reloaded ? "applied" : "none";
+}
+
+/** Settings tile: fresh check, then apply. No idle heads-up — they tapped Check. */
+export async function checkForAppUpdate(fromSettings: boolean): Promise<void> {
+  if (!updatesReady()) {
+    if (fromSettings) {
+      Alert.alert(i18n.t("ota.check"), i18n.t("ota.disabled"));
+    }
+    return;
+  }
+  try {
+    const check = await Updates.checkForUpdateAsync();
+    if (!check.isAvailable) {
+      if (fromSettings) {
+        Alert.alert(i18n.t("ota.check"), i18n.t("ota.none"));
+      }
+      return;
+    }
+    // Share this result with a concurrent cold-start apply so it does not hit the Worker twice.
+    probePromise = Promise.resolve(true);
+    const busy = isPlaybackBusy() || hasInFlightDownloads();
+    if (!busy) {
+      const applied = await applyUpdate();
+      if (!applied && fromSettings) {
+        Alert.alert(i18n.t("ota.check"), i18n.t("ota.failed"));
+      }
+      return;
+    }
+    promptBusyApply();
+  } catch {
+    if (fromSettings) {
+      Alert.alert(i18n.t("ota.check"), i18n.t("ota.failed"));
+    }
+  }
+}

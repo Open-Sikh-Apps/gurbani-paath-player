@@ -1,0 +1,15 @@
+name = "gurbaniaudioplayer-updates"
+main = "src/worker.ts"
+compatibility_date = "2026-01-01"
+
+# Must sit at the top level (not under [[r2_buckets]]). Same CF account as opensikhapps.com.
+# Check handshake only. Apply downloads use R2 custom domain
+# gurbaniaudioplayer-updates.opensikhapps.com (CDN cache).
+routes = [
+  { pattern = "updatesgurbaniaudioplayer.opensikhapps.com", custom_domain = true }
+]
+
+# Create once: npx wrangler r2 bucket create gurbaniaudioplayer-updates
+[[r2_buckets]]
+binding = "BUCKET"
+bucket_name = "gurbaniaudioplayer-updates"

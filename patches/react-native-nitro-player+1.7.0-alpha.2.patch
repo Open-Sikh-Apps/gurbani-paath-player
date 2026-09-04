@@ -1,3 +1,22 @@
+diff --git a/node_modules/react-native-nitro-player/android/src/main/AndroidManifest.xml b/node_modules/react-native-nitro-player/android/src/main/AndroidManifest.xml
+index eaa7655..5f0f195 100644
+--- a/node_modules/react-native-nitro-player/android/src/main/AndroidManifest.xml
++++ b/node_modules/react-native-nitro-player/android/src/main/AndroidManifest.xml
+@@ -25,6 +25,14 @@
+             android:name="com.google.android.gms.cast.framework.OPTIONS_PROVIDER_CLASS_NAME"
+             android:value="com.margelo.nitro.nitroplayer.media.NitroCastOptionsProvider" />
+ 
++        <!-- Transparent hop so a media-notification tap can issue VIEW like uri-scheme. -->
++        <activity
++            android:name="com.margelo.nitro.nitroplayer.media.SessionActivityTrampoline"
++            android:exported="true"
++            android:excludeFromRecents="true"
++            android:noHistory="true"
++            android:theme="@android:style/Theme.Translucent.NoTitleBar" />
++
+         <!-- PlaybackService keeps music alive when screen is locked / app backgrounded -->
+         <service
+             android:name="com.margelo.nitro.nitroplayer.media.NitroPlayerPlaybackService"
 diff --git a/node_modules/react-native-nitro-player/android/src/main/java/com/margelo/nitro/nitroplayer/core/ExoPlayerCore.kt b/node_modules/react-native-nitro-player/android/src/main/java/com/margelo/nitro/nitroplayer/core/ExoPlayerCore.kt
 index bd5c970..87cb830 100644
 --- a/node_modules/react-native-nitro-player/android/src/main/java/com/margelo/nitro/nitroplayer/core/ExoPlayerCore.kt
@@ -16,10 +35,10 @@ index bd5c970..87cb830 100644
  
      fun removeMediaItems(
 diff --git a/node_modules/react-native-nitro-player/android/src/main/java/com/margelo/nitro/nitroplayer/core/TrackPlayerCore.kt b/node_modules/react-native-nitro-player/android/src/main/java/com/margelo/nitro/nitroplayer/core/TrackPlayerCore.kt
-index c5ecc5e..db24365 100644
+index c5ecc5e..0dfe89d 100644
 --- a/node_modules/react-native-nitro-player/android/src/main/java/com/margelo/nitro/nitroplayer/core/TrackPlayerCore.kt
 +++ b/node_modules/react-native-nitro-player/android/src/main/java/com/margelo/nitro/nitroplayer/core/TrackPlayerCore.kt
-@@ -70,6 +70,10 @@ class TrackPlayerCore private constructor(
+@@ -70,6 +70,13 @@ class TrackPlayerCore private constructor(
  
      @Volatile internal var currentRepeatMode: RepeatMode = RepeatMode.OFF
      internal var lookaheadCount: Int = 5
@@ -27,6 +46,9 @@ index c5ecc5e..db24365 100644
 +    @Volatile internal var skipOnSourceError: Boolean = false
 +    // Default on: headset / compact buttons seek ±interval; overflow skips tracks.
 +    @Volatile internal var remotePrimarySeek: Boolean = true
++    // Default on: ±10 may land on an https neighbour. JS sets this false while offline
++    // so lock-screen seek clamps instead of starting a stream that will stall.
++    @Volatile internal var allowHttpOverflow: Boolean = true
  
      internal var remoteSkipForwardIntervalMs: Long = ExoPlayerBuilder.DEFAULT_REMOTE_SKIP_INTERVAL_MS
      internal var remoteSkipBackwardIntervalMs: Long = ExoPlayerBuilder.DEFAULT_REMOTE_SKIP_INTERVAL_MS
@@ -66,13 +88,22 @@ index a98389f..cab468a 100644
          }
      }
 diff --git a/node_modules/react-native-nitro-player/android/src/main/java/com/margelo/nitro/nitroplayer/core/TrackPlayerPlayback.kt b/node_modules/react-native-nitro-player/android/src/main/java/com/margelo/nitro/nitroplayer/core/TrackPlayerPlayback.kt
-index 032b91e..65d4bfd 100644
+index 032b91e..ebbd9d5 100644
 --- a/node_modules/react-native-nitro-player/android/src/main/java/com/margelo/nitro/nitroplayer/core/TrackPlayerPlayback.kt
 +++ b/node_modules/react-native-nitro-player/android/src/main/java/com/margelo/nitro/nitroplayer/core/TrackPlayerPlayback.kt
-@@ -71,6 +71,53 @@ internal fun TrackPlayerCore.skipToPreviousOnQueue() {
+@@ -71,6 +71,72 @@ internal fun TrackPlayerCore.skipToPreviousOnQueue() {
      checkUpcomingTracksForUrls(lookaheadCount)
  }
  
++private fun TrackPlayerCore.shouldClampHttpOverflow(index: Int): Boolean {
++    if (allowHttpOverflow) {
++        return false
++    }
++    val url = currentTracks.getOrNull(index)?.url ?: return false
++    return url.startsWith("http://", ignoreCase = true) ||
++        url.startsWith("https://", ignoreCase = true)
++}
++
 +internal fun TrackPlayerCore.seekBackOverflowing() {
 +    val delta = remoteSkipBackwardIntervalMs
 +    val position = exo.currentPosition
@@ -86,8 +117,13 @@ index 032b91e..65d4bfd 100644
 +        exo.seekTo(0)
 +        return
 +    }
-+    val remainder = delta - position
 +    val prevIndex = currentTrackIndex - 1
++    if (shouldClampHttpOverflow(prevIndex)) {
++        isManuallySeeked = true
++        exo.seekTo(0)
++        return
++    }
++    val remainder = delta - position
 +    val prevDurationMs = (currentTracks.getOrNull(prevIndex)?.duration ?: 0.0) * 1000.0
 +    playFromIndexInternal(prevIndex)
 +    isManuallySeeked = true
@@ -114,6 +150,11 @@ index 032b91e..65d4bfd 100644
 +        exo.seekTo(duration)
 +        return
 +    }
++    if (shouldClampHttpOverflow(currentTrackIndex + 1)) {
++        isManuallySeeked = true
++        exo.seekTo(duration)
++        return
++    }
 +    val leftover = delta - remaining
 +    playFromIndexInternal(currentTrackIndex + 1)
 +    isManuallySeeked = true
@@ -123,7 +164,7 @@ index 032b91e..65d4bfd 100644
  suspend fun TrackPlayerCore.setRepeatMode(mode: RepeatMode) = withPlayerContext { setRepeatModeOnQueue(mode) }
  
  internal fun TrackPlayerCore.setRepeatModeOnQueue(mode: RepeatMode) {
-@@ -103,7 +150,7 @@ suspend fun TrackPlayerCore.configure(config: PlayerConfig) = withPlayerContext
+@@ -103,7 +169,7 @@ suspend fun TrackPlayerCore.configure(config: PlayerConfig) = withPlayerContext
  internal fun TrackPlayerCore.configureOnQueue(config: PlayerConfig) {
      config.androidAutoEnabled?.let { NitroPlayerMediaBrowserService.isAndroidAutoEnabled = it }
      config.lookaheadCount?.let { lookaheadCount = it.toInt() }
@@ -132,7 +173,7 @@ index 032b91e..65d4bfd 100644
      remoteSkipIntervalMs(config.remoteSkipForwardInterval)?.let { remoteSkipForwardIntervalMs = it }
      remoteSkipIntervalMs(config.remoteSkipBackwardInterval)?.let { remoteSkipBackwardIntervalMs = it }
      applyRemoteSkipIntervals()
-@@ -113,9 +160,32 @@ internal fun TrackPlayerCore.configureOnQueue(config: PlayerConfig) {
+@@ -113,9 +179,33 @@ internal fun TrackPlayerCore.configureOnQueue(config: PlayerConfig) {
          config.showInNotification,
          remoteSkipForwardIntervalMs,
          remoteSkipBackwardIntervalMs,
@@ -140,7 +181,7 @@ index 032b91e..65d4bfd 100644
      )
  }
  
-+// PlayerConfig has no extra flags; JS packs icon + skipOnError + remotePrimary here.
++// PlayerConfig has no extra flags; JS packs icon + skipOnError + remotePrimary + httpOverflow here.
 +private fun TrackPlayerCore.applyConfigToken(token: String) {
 +    if (!token.contains(':')) {
 +        NitroPlayerPlaybackService.notificationSmallIconResName = token
@@ -154,6 +195,7 @@ index 032b91e..65d4bfd 100644
 +        when (key) {
 +            "skipOnError" -> skipOnSourceError = value == "1"
 +            "remotePrimary" -> remotePrimarySeek = value != "skip"
++            "httpOverflow" -> allowHttpOverflow = value != "0"
 +            "icon" ->
 +                if (value.isNotEmpty()) {
 +                    NitroPlayerPlaybackService.notificationSmallIconResName = value
@@ -451,7 +493,7 @@ index c390861..312b3d7 100644
      private fun skipBackIcon(intervalMs: Long): Int =
          when (intervalMs) {
 diff --git a/node_modules/react-native-nitro-player/android/src/main/java/com/margelo/nitro/nitroplayer/media/PlaybackService.kt b/node_modules/react-native-nitro-player/android/src/main/java/com/margelo/nitro/nitroplayer/media/PlaybackService.kt
-index e638d80..a58b9fb 100644
+index e638d80..5d35e11 100644
 --- a/node_modules/react-native-nitro-player/android/src/main/java/com/margelo/nitro/nitroplayer/media/PlaybackService.kt
 +++ b/node_modules/react-native-nitro-player/android/src/main/java/com/margelo/nitro/nitroplayer/media/PlaybackService.kt
 @@ -7,6 +7,8 @@ import android.os.Handler
@@ -474,7 +516,16 @@ index e638d80..a58b9fb 100644
  import com.margelo.nitro.nitroplayer.playlist.PlaylistManager
  
  /**
-@@ -81,10 +87,97 @@ class NitroPlayerPlaybackService : MediaSessionService() {
+@@ -34,6 +40,8 @@ class NitroPlayerPlaybackService : MediaSessionService() {
+     companion object {
+         const val ACTION_LOCAL_BIND = "com.margelo.nitro.nitroplayer.LOCAL_BIND"
+         const val EXTRA_STARTED_FROM_NOTIFICATION = "com.margelo.nitro.nitroplayer.STARTED_FROM_NOTIFICATION"
++        // Same URI as `npx uri-scheme open gurbaniaudioplayer://now-playing --android`.
++        const val SESSION_ACTIVITY_URI = "gurbaniaudioplayer://now-playing"
+ 
+         @Volatile
+         var notificationSmallIconResName: String? = null
+@@ -81,10 +89,97 @@ class NitroPlayerPlaybackService : MediaSessionService() {
          // Build ExoPlayer on main looper (default)
          player = ExoPlayerBuilder.build(this)
  
@@ -573,6 +624,238 @@ index e638d80..a58b9fb 100644
              .setCallback(MediaSessionCallbackFactory.create(this, playlistManager))
              .apply { buildSessionActivity()?.let { setSessionActivity(it) } }
              .build()
+@@ -130,13 +225,17 @@ class NitroPlayerPlaybackService : MediaSessionService() {
+ 
+     // Content intent for the notification tap — newer Android has no fallback without it
+     private fun buildSessionActivity(): PendingIntent? {
+-        val launch = packageManager.getLaunchIntentForPackage(packageName) ?: return null
+-        launch.putExtra(EXTRA_STARTED_FROM_NOTIFICATION, true)
++        // API 33+ UMO reads this PendingIntent from the session. getActivities/MUTABLE is ignored
++        // there; a single immutable getActivity is what System UI will actually send.
++        val intent =
++            Intent(this, SessionActivityTrampoline::class.java).apply {
++                addFlags(Intent.FLAG_ACTIVITY_NEW_TASK)
++            }
+         return PendingIntent.getActivity(
+             this,
+-            0,
+-            launch,
+-            PendingIntent.FLAG_IMMUTABLE or PendingIntent.FLAG_UPDATE_CURRENT,
++            /* requestCode */ 1,
++            intent,
++            PendingIntent.FLAG_UPDATE_CURRENT or PendingIntent.FLAG_IMMUTABLE,
+         )
+     }
+ 
+@@ -154,15 +253,34 @@ class NitroPlayerPlaybackService : MediaSessionService() {
+ 
+         // Live Refresh :)
+         val session = mediaSession
+-        if (session != null && session.player.isPlaying) {
++        if (session != null && shouldStayForeground(session.player)) {
+             try {
+-                onUpdateNotification(session, false)
++                // Passing false here used to call stopForeground while a stream
++                // was still playing (NetInfo reconfigure, remote-primary change).
++                onUpdateNotification(session, true)
+             } catch (e: Exception) {
+                 NitroPlayerLogger.log("PlaybackService") { "notification refresh failed: ${e.message}" }
+             }
+         }
+     }
+ 
++    // Media3 isPlaying() is false while buffering. A long stream still needs
++    // mediaPlayback FGS then, or LMK treats the process as cached.
++    private fun shouldStayForeground(player: Player): Boolean {
++        return player.playWhenReady &&
++            (
++                player.playbackState == Player.STATE_READY ||
++                    player.playbackState == Player.STATE_BUFFERING
++            )
++    }
++
++    override fun onUpdateNotification(session: MediaSession, startInForegroundRequired: Boolean) {
++        super.onUpdateNotification(
++            session,
++            startInForegroundRequired || shouldStayForeground(session.player),
++        )
++    }
++
+     override fun onGetSession(controllerInfo: MediaSession.ControllerInfo): MediaSession? =
+         mediaSession
+ 
+@@ -174,11 +292,13 @@ class NitroPlayerPlaybackService : MediaSessionService() {
+     }
+ 
+     override fun onTaskRemoved(rootIntent: Intent?) {
+-        val session = mediaSession
+-        if (session == null || !session.player.playWhenReady) {
+-            stopSelf()
++        val player = mediaSession?.player
++        // Media3 super uses isPlaying(), which is false while buffering, and
++        // would pauseAllPlayersAndStopSelf() on recents-swipe during a rebuffer.
++        if (player != null && isPlaybackOngoing() && shouldStayForeground(player)) {
++            return
+         }
+-        super.onTaskRemoved(rootIntent)
++        pauseAllPlayersAndStopSelf()
+     }
+ 
+     override fun onDestroy() {
+diff --git a/node_modules/react-native-nitro-player/android/src/main/java/com/margelo/nitro/nitroplayer/media/SessionActivityTrampoline.kt b/node_modules/react-native-nitro-player/android/src/main/java/com/margelo/nitro/nitroplayer/media/SessionActivityTrampoline.kt
+new file mode 100644
+index 0000000..bcbc073
+--- /dev/null
++++ b/node_modules/react-native-nitro-player/android/src/main/java/com/margelo/nitro/nitroplayer/media/SessionActivityTrampoline.kt
+@@ -0,0 +1,37 @@
++package com.margelo.nitro.nitroplayer.media
++
++import android.app.Activity
++import android.content.Intent
++import android.net.Uri
++import android.os.Bundle
++import com.margelo.nitro.nitroplayer.core.NitroPlayerLogger
++
++/**
++ * API 33+ System UI sends sessionActivity as a single getActivity PendingIntent.
++ * This activity exists only to turn that tap into the VIEW URI Expo Router already handles.
++ */
++class SessionActivityTrampoline : Activity() {
++    override fun onCreate(savedInstanceState: Bundle?) {
++        super.onCreate(savedInstanceState)
++        NitroPlayerLogger.log("SessionActivityTrampoline") {
++            "media notification tap → ${NitroPlayerPlaybackService.SESSION_ACTIVITY_URI}"
++        }
++        val launch = packageManager.getLaunchIntentForPackage(packageName)
++        val view =
++            Intent(
++                Intent.ACTION_VIEW,
++                Uri.parse(NitroPlayerPlaybackService.SESSION_ACTIVITY_URI),
++            ).apply {
++                component = launch?.component
++                addCategory(Intent.CATEGORY_DEFAULT)
++                addCategory(Intent.CATEGORY_BROWSABLE)
++                addFlags(
++                    Intent.FLAG_ACTIVITY_NEW_TASK or
++                        Intent.FLAG_ACTIVITY_CLEAR_TOP or
++                        Intent.FLAG_ACTIVITY_SINGLE_TOP,
++                )
++            }
++        startActivity(view)
++        finish()
++    }
++}
+diff --git a/node_modules/react-native-nitro-player/android/src/main/java/com/margelo/nitro/nitroplayer/playlist/PlaylistManager.kt b/node_modules/react-native-nitro-player/android/src/main/java/com/margelo/nitro/nitroplayer/playlist/PlaylistManager.kt
+index b8a3308..dd13f24 100644
+--- a/node_modules/react-native-nitro-player/android/src/main/java/com/margelo/nitro/nitroplayer/playlist/PlaylistManager.kt
++++ b/node_modules/react-native-nitro-player/android/src/main/java/com/margelo/nitro/nitroplayer/playlist/PlaylistManager.kt
+@@ -1,6 +1,7 @@
+ package com.margelo.nitro.nitroplayer.playlist
+ 
+ import android.content.Context
++import com.margelo.nitro.JNIOnLoad
+ import com.margelo.nitro.core.AnyMap
+ import com.margelo.nitro.nitroplayer.QueueOperation
+ import com.margelo.nitro.nitroplayer.TrackItem
+@@ -429,7 +430,7 @@ class PlaylistManager private constructor(
+                     } else {
+                         wrapper.optString("currentPlaylistId", null.toString()).takeIf { it != "null" }
+                     }
+-            } catch (e: Exception) {
++            } catch (e: Throwable) {
+                 e.printStackTrace()
+             }
+             return
+@@ -451,7 +452,7 @@ class PlaylistManager private constructor(
+                     .apply()
+                 // Persist in new format
+                 saveToFile()
+-            } catch (e: Exception) {
++            } catch (e: Throwable) {
+                 e.printStackTrace()
+             }
+             return
+@@ -460,7 +461,40 @@ class PlaylistManager private constructor(
+         // 3. Fresh install — nothing to load
+     }
+ 
++    // PlaybackService.onCreate can run on swipe-kill relaunch before RN loads Nitro JNI.
++    // AnyMap / Variant hybrids need that .so; UnsatisfiedLinkError is Error, not Exception.
++    private fun ensureNitroJni(): Boolean =
++        try {
++            JNIOnLoad.initializeNativeNitro()
++            true
++        } catch (e: Throwable) {
++            false
++        }
++
++    private fun extraPayloadFromJson(trackObj: JSONObject): AnyMap? {
++        if (!trackObj.has("extraPayload")) {
++            return null
++        }
++        return try {
++            val extraPayloadJson = trackObj.getJSONObject("extraPayload")
++            val map = AnyMap()
++            val keyIterator = extraPayloadJson.keys()
++            while (keyIterator.hasNext()) {
++                val key = keyIterator.next()
++                when (val value = extraPayloadJson.get(key)) {
++                    is String -> map.setString(key, value)
++                    is Number -> map.setDouble(key, value.toDouble())
++                    is Boolean -> map.setBoolean(key, value)
++                }
++            }
++            map
++        } catch (e: Throwable) {
++            null
++        }
++    }
++
+     private fun parseAndLoadPlaylists(jsonArray: JSONArray) {
++        val jniReady = ensureNitroJni()
+         playlists.clear()
+         for (i in 0 until jsonArray.length()) {
+             val jsonObject = jsonArray.getJSONObject(i)
+@@ -470,25 +504,12 @@ class PlaylistManager private constructor(
+                 val trackObj = tracksArray.getJSONObject(j)
+                 val artworkStr = trackObj.optString("artwork")
+                 val artwork: Variant_NullType_String? =
+-                    if (!artworkStr.isNullOrEmpty()) {
+-                        Variant_NullType_String.create(artworkStr)
+-                    } else {
+-                        null
+-                    }
+-                val extraPayload: AnyMap? =
+-                    if (trackObj.has("extraPayload")) {
+-                        val extraPayloadJson = trackObj.getJSONObject("extraPayload")
+-                        val map = AnyMap()
+-                        val keyIterator = extraPayloadJson.keys()
+-                        while (keyIterator.hasNext()) {
+-                            val key = keyIterator.next()
+-                            when (val value = extraPayloadJson.get(key)) {
+-                                is String -> map.setString(key, value)
+-                                is Number -> map.setDouble(key, value.toDouble())
+-                                is Boolean -> map.setBoolean(key, value)
+-                            }
++                    if (jniReady && !artworkStr.isNullOrEmpty()) {
++                        try {
++                            Variant_NullType_String.create(artworkStr)
++                        } catch (e: Throwable) {
++                            null
+                         }
+-                        map
+                     } else {
+                         null
+                     }
+@@ -501,7 +522,7 @@ class PlaylistManager private constructor(
+                         duration = trackObj.getDouble("duration"),
+                         url = trackObj.getString("url"),
+                         artwork = artwork,
+-                        extraPayload = extraPayload,
++                        extraPayload = if (jniReady) extraPayloadFromJson(trackObj) else null,
+                     ),
+                 )
+             }
 diff --git a/node_modules/react-native-nitro-player/ios/HybridTrackPlayer.swift b/node_modules/react-native-nitro-player/ios/HybridTrackPlayer.swift
 index d02bb11..3ff3218 100644
 --- a/node_modules/react-native-nitro-player/ios/HybridTrackPlayer.swift
@@ -588,17 +871,19 @@ index d02bb11..3ff3218 100644
      }
    }
 diff --git a/node_modules/react-native-nitro-player/ios/core/TrackPlayerCore.swift b/node_modules/react-native-nitro-player/ios/core/TrackPlayerCore.swift
-index 50df2f2..992e389 100644
+index 50df2f2..5425c9e 100644
 --- a/node_modules/react-native-nitro-player/ios/core/TrackPlayerCore.swift
 +++ b/node_modules/react-native-nitro-player/ios/core/TrackPlayerCore.swift
-@@ -56,6 +56,10 @@ class TrackPlayerCore: NSObject {
+@@ -56,6 +56,12 @@ class TrackPlayerCore: NSObject {
    internal var currentRepeatMode: RepeatMode = .off
    internal var currentPlaybackSpeed: Double = 1.0
    internal var lookaheadCount: Int = 5
 +  // Default off: stay on the failed item so JS can show error and wait for play().
 +  internal var skipOnSourceError = false
-+  // Default on: lock-screen / headset next-prev seek ±interval; in-app still skips tracks.
-+  internal var remotePrimarySeek = true
++    // Default on: lock-screen / headset next-prev seek ±interval; in-app still skips tracks.
++    internal var remotePrimarySeek = true
++    // Default on: ±10 may land on an https neighbour. JS sets this false while offline.
++    internal var allowHttpOverflow = true
    internal var boundaryTimeObserver: Any?
    internal var currentItemObservers: [NSKeyValueObservation] = []
  
@@ -623,7 +908,7 @@ index 302aebf..895758b 100644
      }
    }
 diff --git a/node_modules/react-native-nitro-player/ios/core/TrackPlayerPlayback.swift b/node_modules/react-native-nitro-player/ios/core/TrackPlayerPlayback.swift
-index 00514ae..1352228 100644
+index 00514ae..c5608bb 100644
 --- a/node_modules/react-native-nitro-player/ios/core/TrackPlayerPlayback.swift
 +++ b/node_modules/react-native-nitro-player/ios/core/TrackPlayerPlayback.swift
 @@ -103,13 +103,19 @@ extension TrackPlayerCore {
@@ -638,7 +923,7 @@ index 00514ae..1352228 100644
        self.lookaheadCount = la
        NitroPlayerLogger.log("TrackPlayerCore", "🔄 Lookahead count set to: \(la)")
      }
-+    // PlayerConfig has no extra flags; JS packs skipOnError, remotePrimary, and Android icon here.
++    // PlayerConfig has no extra flags; JS packs skipOnError, remotePrimary, httpOverflow, and Android icon here.
 +    if let icon = androidNotificationIcon {
 +      applyConfigToken(icon)
 +    }
@@ -647,7 +932,7 @@ index 00514ae..1352228 100644
      DispatchQueue.main.async { [weak self] in
        self?.mediaSessionManager?.configure(
          androidAutoEnabled: androidAutoEnabled,
-@@ -117,10 +123,32 @@ extension TrackPlayerCore {
+@@ -117,10 +123,34 @@ extension TrackPlayerCore {
          showInNotification: showInNotification,
          remoteSkipForwardInterval: remoteSkipForwardInterval,
          remoteSkipBackwardInterval: remoteSkipBackwardInterval,
@@ -670,6 +955,8 @@ index 00514ae..1352228 100644
 +        skipOnSourceError = value == "1"
 +      case "remotePrimary":
 +        remotePrimarySeek = value != "skip"
++      case "httpOverflow":
++        allowHttpOverflow = value != "0"
 +      case "icon":
 +        // Android drawable name; iOS Now Playing uses the app icon.
 +        break
@@ -681,7 +968,21 @@ index 00514ae..1352228 100644
    func configure(
      androidAutoEnabled: Bool?, carPlayEnabled: Bool?,
      showInNotification: Bool?, lookaheadCount: Int?,
-@@ -170,11 +198,29 @@ extension TrackPlayerCore {
+@@ -158,6 +188,13 @@ extension TrackPlayerCore {
+     try await withPlayerQueue { try self.setPlaybackSpeedOnQueue(speed) }
+   }
+ 
++  private func shouldClampHttpOverflow(_ index: Int) -> Bool {
++    if allowHttpOverflow { return false }
++    guard let url = currentTracks[safe: index]?.url, !url.isEmpty else { return false }
++    let lower = url.lowercased()
++    return lower.hasPrefix("http://") || lower.hasPrefix("https://")
++  }
++
+   func seekByOnQueue(offset: Double) {
+     if isCasting {
+       let position = castManager?.lastKnownRemotePosition ?? 0
+@@ -170,11 +207,37 @@ extension TrackPlayerCore {
      guard let player = self.player else { return }
      let position = player.currentTime().seconds
      guard position.isFinite else { return }
@@ -695,19 +996,27 @@ index 00514ae..1352228 100644
 +
 +    if offset < 0, target < 0, currentTrackIndex > 0 {
 +      let prevIndex = currentTrackIndex - 1
++      if shouldClampHttpOverflow(prevIndex) {
++        seekInternal(position: 0)
++        return
++      }
 +      let prevDur = currentTracks[safe: prevIndex]?.duration ?? 0
 +      let remainder = -target
 +      _ = skipToIndexInternal(index: prevIndex)
 +      seekInternal(position: max(0, prevDur - remainder))
 +      return
-     }
--    seekInternal(position: target)
++    }
 +    if offset > 0, duration > 0, target > duration, currentTrackIndex < currentTracks.count - 1 {
++      if shouldClampHttpOverflow(currentTrackIndex + 1) {
++        seekInternal(position: duration)
++        return
++      }
 +      let leftover = target - duration
 +      _ = skipToIndexInternal(index: currentTrackIndex + 1)
 +      seekInternal(position: leftover)
 +      return
-+    }
+     }
+-    seekInternal(position: target)
 +
 +    var clamped = max(0, target)
 +    if duration > 0 { clamped = min(clamped, duration) }

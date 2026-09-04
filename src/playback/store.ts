@@ -1,7 +1,11 @@
 import { getPlayerEngine } from "@/playback/engine";
 import { initSleepTimer } from "@/playback/sleep-timer";
-import type { LoadAlbumOptions, PlayerSession, RemotePrimary } from "@/playback/types";
-import { usePreferencesStore } from "@/state/preferences-store";
+import { getSessionTrack, isLocalPlaybackUrl, withLocalUrls } from "@/playback/session";
+import { usePlaybackStore } from "@/playback/status-store";
+import type { LoadAlbumOptions, PlayerSession, RemotePrimary, SessionTrack } from "@/playback/types";
+import { isOnline, playableUrlFor } from "@/downloads";
+import i18n from "@/i18n";
+import { recordHistoryPlay } from "@/state/history-store";
 
 export { usePlaybackStore } from "@/playback/status-store";
 
@@ -13,24 +17,61 @@ export function initPlayback(): void {
   }
   started = true;
   initSleepTimer();
-  void setRemotePrimary(usePreferencesStore.getState().remotePrimary);
+  let lastHistoryKey = "";
+  // Identity only — lock-screen skip is included; pause/seek on the same track is not.
+  getPlayerEngine().subscribe((status) => {
+    if (!status.session || !status.currentTrackId) {
+      return;
+    }
+    const key = `${status.session.albumId}:${status.currentTrackId}`;
+    if (key === lastHistoryKey) {
+      return;
+    }
+    lastHistoryKey = key;
+    recordHistoryPlay(status.session.albumId, status.currentTrackId);
+  });
 }
 
+export function trackAvailableOffline(track: SessionTrack): boolean {
+  // `url` may still be https while a file exists (pinned current); playableUrlFor is the disk check.
+  return (
+    isLocalPlaybackUrl(track.url) ||
+    playableUrlFor(track.id, track.remoteUrl) != null
+  );
+}
+
+/** Loads and plays. Returns false while offline with no file — caller must not open Now Playing. */
 export async function playAlbum(
   session: PlayerSession,
   options?: LoadAlbumOptions,
-): Promise<void> {
+): Promise<boolean> {
+  const resolved = withLocalUrls(session);
+  const startId = options?.trackId ?? resolved.tracks[0]?.id;
+  const start = startId ? getSessionTrack(resolved, startId) : undefined;
+  if (
+    start &&
+    !isOnline() &&
+    playableUrlFor(start.id, start.remoteUrl) == null
+  ) {
+    // Do not load native — play() would no-op and look like a hang.
+    usePlaybackStore.setState({ error: i18n.t("player.offlineStreamError") });
+    return false;
+  }
   const engine = getPlayerEngine();
-  await engine.loadAlbum(session, options);
+  await engine.loadAlbum(resolved, options);
   engine.play();
+  return true;
 }
 
 export function togglePlayPause(): void {
   const engine = getPlayerEngine();
-  if (engine.getStatus().playing) {
+  const status = engine.getStatus();
+  if (status.playing) {
     engine.pause();
     return;
   }
+  // Adapter play() uses playableUrlFor so a finished download is resumeable
+  // even if pause has not unpinned the frozen https URL yet.
   engine.play();
 }
 
@@ -43,15 +84,36 @@ export function setPlaybackRate(rate: number): void {
 }
 
 export function skipNext(): void {
-  getPlayerEngine().next();
+  const engine = getPlayerEngine();
+  const status = engine.getStatus();
+  const next = status.session?.tracks[status.currentIndex + 1];
+  // Stay on the current item; skipping into an undownloaded stream would replace a playable track.
+  if (next && !isOnline() && !trackAvailableOffline(next)) {
+    return;
+  }
+  engine.next();
 }
 
 export function skipPrevious(): void {
-  getPlayerEngine().previous();
+  const engine = getPlayerEngine();
+  const status = engine.getStatus();
+  const prev = status.session?.tracks[status.currentIndex - 1];
+  // Stay on the current item; skipping into an undownloaded stream would replace a playable track.
+  if (prev && !isOnline() && !trackAvailableOffline(prev)) {
+    return;
+  }
+  engine.previous();
 }
 
 export function skipToTrack(trackId: string): void {
-  getPlayerEngine().skipTo(trackId);
+  const engine = getPlayerEngine();
+  const session = engine.getStatus().session;
+  const track = session ? getSessionTrack(session, trackId) : undefined;
+  // Same gate as skip next/prev — do not jump to an undownloaded stream while offline.
+  if (track && !isOnline() && !trackAvailableOffline(track)) {
+    return;
+  }
+  engine.skipTo(trackId);
 }
 
 export function seekBy(deltaSec: number): void {

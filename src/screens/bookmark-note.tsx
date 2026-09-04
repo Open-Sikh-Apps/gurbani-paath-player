@@ -3,18 +3,19 @@ import { useEffect, useState } from "react";
 import { useTranslation } from "react-i18next";
 
 import {
-  getCollectionById,
+  getTrackInCollection,
   resolveL10n,
   useCatalogueStore,
 } from "@/catalogue";
 import { useChrome } from "@/hooks/use-chrome";
 import { useResolvedLocale } from "@/hooks/use-resolved-locale";
-import { formatDuration, usePlaybackStore } from "@/playback";
+import { formatDuration, getSessionTrack, usePlaybackStore } from "@/playback";
 import { useBookmarksStore } from "@/state/bookmarks-store";
 import { useThemeColors } from "@/theme/use-theme-colors";
 import { Pressable, ScrollView, Text, TextInput, View, cn, ui } from "@/tw";
 import { HeaderCloseButton } from "@/components/header-close-button";
 import { OverflowMenu } from "@/components/overflow-menu";
+import { showToast } from "@/feedback/toast";
 
 export function BookmarkNoteScreen() {
   const { t } = useTranslation();
@@ -47,6 +48,8 @@ export function BookmarkNoteScreen() {
   const canSave = Boolean(albumId && trackId);
   const [note, setNote] = useState(existing?.note ?? "");
 
+  // Re-sync when the route bookmarkId changes, not on every store tick —
+  // otherwise typing would reset if another bookmark write lands.
   useEffect(() => {
     if (!bookmarkId) {
       setNote("");
@@ -62,16 +65,17 @@ export function BookmarkNoteScreen() {
     if (!trackId) {
       return t("bookmark.unavailable");
     }
-    const sessionTrack = session?.tracks.find((track) => track.id === trackId);
+    // Frozen session outlives a catalogue drop; prefer it over lookups.
+    const sessionTrack = session ? getSessionTrack(session, trackId) : undefined;
     if (sessionTrack) {
       return resolveL10n(sessionTrack.title, locale);
     }
-    const collection = albumId ? getCollectionById(catalogue, albumId) : undefined;
-    if (collection?.kind === "sehaj_paath") {
-      const track = collection.tracks.find((item) => item.id === trackId);
-      if (track) {
-        return resolveL10n(track.title, locale);
-      }
+    if (!albumId) {
+      return t("bookmark.unavailable");
+    }
+    const track = getTrackInCollection(catalogue, albumId, trackId);
+    if (track) {
+      return resolveL10n(track.title, locale);
     }
     return t("bookmark.unavailable");
   }
@@ -91,6 +95,7 @@ export function BookmarkNoteScreen() {
       positionSec: stamp,
       note,
     });
+    showToast(t("bookmark.saved"));
     router.back();
   }
 
@@ -111,11 +116,10 @@ export function BookmarkNoteScreen() {
           <Text className={cn(ui.text, text)}>{trackTitle()}</Text>
           <Text className={cn(ui.muted, text)}>{formatDuration(stamp)}</Text>
         </View>
-        <Text className={cn(ui.muted, body)}>{t("bookmark.noteHint")}</Text>
         <TextInput
           accessibilityLabel={t("bookmark.note")}
           className={cn("min-h-32 rounded-2xl border px-4 py-3", ui.border, ui.text, text)}
-          placeholder={t("bookmark.note")}
+          placeholder={`${t("bookmark.note")}: ${t("bookmark.noteHint")}`}
           placeholderTextColor={colors.textMuted}
           multiline
           value={note}

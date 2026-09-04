@@ -1,6 +1,6 @@
 {
   "tabs": {
-    "home": "Home",
+    "home": "Catalogue",
     "library": "Library",
     "settings": "Settings"
   },
@@ -12,7 +12,9 @@
     "simpleModeBody": "Larger buttons and text. Helpful for elders and while driving. You can change this later in Settings.",
     "simpleModeOn": "Use Simple mode",
     "simpleModeOff": "Use standard layout",
-    "done": "Get started"
+    "done": "Get started",
+    "notificationsTitle": "Device notifications are required",
+    "notificationsBody": "They show what is playing and download progress, including when you leave the app. Playback and downloads need this permission."
   },
   "settings": {
     "title": "Settings",
@@ -26,11 +28,17 @@
     "themeDark": "Dark",
     "keepScreenOn": "Keep screen on while playing",
     "keepScreenOnHint": "Prevents the screen from sleeping during playback",
+    "unrestrictedBattery": "Unrestricted battery",
+    "unrestrictedBatteryHint": "On some phones, battery saving stops audio after a few minutes. Open system settings and set Battery to Unrestricted.",
+    "wifiOnly": "Download on Wi-Fi only",
+    "wifiOnlyHint": "Protects mobile data. Turn off to allow downloads on cellular.",
     "remotePrimary": "Lock screen and headset buttons",
-    "remotePrimaryHint": "Primary buttons work on the lock screen, notification, Bluetooth, and car. The other pair stays in the app and the expanded notification.",
+    "remotePrimaryHint": "Primary buttons work on the lock screen, notification, Bluetooth, and car.",
     "remotePrimarySeek": "Jump 10 seconds",
-    "remotePrimarySkip": "Previous and next track",
-    "close": "Close"
+    "remotePrimarySkip": "Previous and next part",
+    "close": "Close",
+    "giveFeedback": "Give feedback",
+    "giveFeedbackHint": "Email the sevaadars regarding any problems or suggestions."
   },
   "library": {
     "title": "Library",
@@ -44,9 +52,8 @@
     "openAlbum": "Open album"
   },
   "home": {
-    "title": "Home",
+    "title": "Gurbani audio player",
     "fateh": "Waheguru Ji Ka Khalsa, Waheguru Ji Ki Fateh",
-    "heroA11y": "Sri Guru Granth Sahib Ji",
     "menu": "More options",
     "refreshCatalogue": "Refresh catalogue",
     "simpleModeOn": "Turn on Simple mode",
@@ -57,23 +64,29 @@
   "album": {
     "title": "Album",
     "unavailable": "This album is no longer in the catalogue.",
-    "resume": "Resume"
+    "resume": "Resume",
+    "playing": "Playing",
+    "paused": "Paused",
+    "ended": "Ended",
+    "endedA11y": "Ended. Tap to replay."
   },
   "player": {
     "play": "Play",
     "pause": "Pause",
-    "previous": "Previous track",
-    "next": "Next track",
+    "restart": "Restart",
+    "previous": "Previous part",
+    "next": "Next part",
     "seekBack": "Jump back 10 seconds",
     "seekForward": "Jump forward 10 seconds",
     "rateSlower": "Slower",
     "rateFaster": "Faster",
     "scrubber": "Playback position",
     "buffering": "Buffering…",
-    "playbackError": "Could not play this track. Tap play to try again.",
+    "playbackError": "Could not play this audio. Tap play to try again.",
+    "offlineStreamError": "This audio is not downloaded. Connect to the internet to stream it.",
     "readAlong": "Read along",
     "readAlongTitle": "Read along",
-    "readAlongBody": "This link opens only the first ang in the current audio, not the ang at the playhead.",
+    "readAlongBody": "This link opens only the first ang in the current part, not the ang at the playhead.",
     "readAlongCancel": "Cancel",
     "readAlongOpen": "Open"
   },
@@ -81,12 +94,12 @@
     "title": "Sleep timer",
     "remaining": "Time remaining",
     "cancel": "Cancel timer",
-    "endOfTrack": "End of this track",
+    "endOfTrack": "End of this part",
     "endOfAlbum": "End of album",
-    "afterTracks": "After a number of tracks",
-    "tracks": "Tracks",
-    "tracksRemaining_one": "{{count}} track remaining",
-    "tracksRemaining_other": "{{count}} tracks remaining",
+    "afterTracks": "After a number of parts",
+    "tracks": "Parts",
+    "tracksRemaining_one": "{{count}} part remaining",
+    "tracksRemaining_other": "{{count}} parts remaining",
     "duration": "Hours and minutes",
     "hours": "Hours",
     "minutes": "Minutes",
@@ -99,14 +112,19 @@
     "listTitle": "Bookmarks",
     "empty": "No bookmarks in this album yet.",
     "note": "Note",
-    "noteHint": "Optional. You can save without a note.",
+    "noteHint": "Optional",
     "edit": "Edit",
     "delete": "Delete",
-    "unavailable": "This track is no longer available."
+    "deleteTitle": "Delete bookmark?",
+    "deleteBody": "This bookmark will be removed.",
+    "unavailable": "This part is no longer available.",
+    "saved": "Bookmark saved.",
+    "resumed": "Playing from bookmark."
   },
   "history": {
     "title": "History",
-    "empty": "Albums you play will appear here."
+    "empty": "Audios you play will appear here.",
+    "resumeFrom": "Resume from {{time}}"
   },
   "resources": {
     "title": "Resources",
@@ -118,8 +136,96 @@
   "catalogue": {
     "loadError": "Could not load the catalogue.",
     "refreshError": "Could not refresh the catalogue. Showing the last saved copy.",
+    "updating": "Updating…",
     "version": "Version {{version}}",
-    "trackCount_one": "{{count}} track",
-    "trackCount_other": "{{count}} tracks"
+    "trackCount_one": "{{count}} part",
+    "trackCount_other": "{{count}} parts"
+  },
+  "collection": {
+    "sehaj_paath": "Sehaj Paath",
+    "audiobook": "Audiobook",
+    "radio": "Radio"
+  },
+  "offline": {
+    "banner": "No internet connection.",
+    "bannerDownloads": "Downloaded audios still play."
+  },
+  "download": {
+    "action": "Download",
+    "all": "Download all",
+    "select": "Select audios",
+    "selectAll": "Select all",
+    "downloadSelected": "Download",
+    "removeAll": "Remove all downloads",
+    "removeAllTitle": "Remove downloads?",
+    "removeAllBody": "This deletes downloaded parts for this album from the phone. The part that is playing now is kept.",
+    "removeTrackTitle": "Remove download?",
+    "removeTrackBody": "This part will need the internet to play.",
+    "remove": "Remove",
+    "cancel": "Cancel",
+    "downloaded": "Downloaded",
+    "downloadTrack": "Download part",
+    "removeTrack": "Remove download",
+    "downloading": "Downloading",
+    "cancelTrackTitle": "Stop this download?",
+    "cancelTrackBody": "This download will stop. You can download this part again later.",
+    "stopDownload": "Stop download",
+    "keepDownloading": "Keep downloading",
+    "wifiOnlyTitle": "Wi-Fi only",
+    "wifiOnlyBody": "Downloads are set to Wi-Fi only. Connect to Wi-Fi, or turn this off in Settings.",
+    "cellularTitle": "Download on mobile data?",
+    "cellularBody": "This uses your mobile data plan. Audio files can be large.",
+    "cellularContinue": "Download",
+    "storageTitle": "Not enough storage",
+    "storageBody": "Free up space on this phone, then try again.",
+    "offlineTitle": "No internet",
+    "offlineBody": "Connect to the internet to download part.",
+    "badUrlTitle": "Can't download",
+    "badUrlBody": "Audio links are missing in this install. Rebuild the preview with EXPO_PUBLIC_MEDIA_BASE_URL set.",
+    "startedTrack": "Downloading this part",
+    "startedTracks_one": "Downloading {{count}} part",
+    "startedTracks_other": "Downloading {{count}} parts",
+    "addedTracks_one": "Added {{count}} part to the download",
+    "addedTracks_other": "Added {{count}} parts to the download",
+    "notificationChannel": "Downloads",
+    "notificationAlbum": "Downloading album",
+    "notificationAlbumBody": "{{done}} of {{total}} parts",
+    "notificationTrack": "Downloading…",
+    "notificationComplete": "Download complete",
+    "notificationCompleteCount": "{{done}} of {{total}} parts downloaded"
+  },
+  "ota": {
+    "check": "Check for update",
+    "none": "You're on the latest version.",
+    "disabled": "Updates are not available in this install.",
+    "busyTitle": "Apply update?",
+    "busyBody": "This stops playback and downloads, then restarts the app. The screen may go blank for a few seconds. Please wait.",
+    "apply": "Update",
+    "cancel": "Not now",
+    "failed": "Could not check for an update.",
+    "applying": "Updating…",
+    "loading": "Loading…",
+    "silentTitle": "Update ready",
+    "silentBody": "The app will update. This may take a few moments, and the screen may go blank. Please wait.",
+    "silentOk": "OK"
+  },
+  "crash": {
+    "title": "Something went wrong",
+    "body": "Send a report to the sevaadars so this can be fixed.",
+    "send": "Send report",
+    "dontSend": "Don't send",
+    "autoSentTitle": "Crash report sent",
+    "autoSentBody": "A crash report was sent automatically. You can email the sevaadars regarding any problems or suggestions.",
+    "email": "Email"
+  },
+  "intro": {
+    "title": "Waheguru Ji Ka Khalsa, Waheguru Ji Ki Fateh",
+    "body": "Please email the sevaadars from Settings if you have any problems or suggestions.",
+    "dismiss": "OK"
+  },
+  "feedback": {
+    "mailSubject": "Gurbani audio player feedback",
+    "mailBody": "App version: {{version}}\nUpdate: {{updateId}}\n\n",
+    "copied": "No mail app. Address and version copied."
   }
 }

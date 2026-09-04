@@ -1,0 +1,7 @@
+# Native recipe is patches/, app.json plugins, and autolinking packageVersion — not
+# whatever npm unpacked or expo run left in node_modules. Same idea as .gitignore.
+node_modules/**/*
+
+# Local expo run / prebuild trees (gitignored). CNG already skips these; keep it explicit.
+android/**/*
+ios/**/*

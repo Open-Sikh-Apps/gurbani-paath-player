@@ -1,18 +1,15 @@
-import { useEffect, useRef } from "react";
+import { useEffect } from "react";
 import { AppState } from "react-native";
 import {
   activateKeepAwakeAsync,
   deactivateKeepAwake,
 } from "expo-keep-awake";
 
+import { AbortError, retryUntilActivity } from "@/native/retry-until-activity";
 import { usePlaybackStore } from "@/playback";
 import { usePreferencesStore } from "@/state/preferences-store";
 
 const TAG = "playback-keep-awake";
-
-function wait(ms: number): Promise<void> {
-  return new Promise((resolve) => setTimeout(resolve, ms));
-}
 
 async function deactivateQuietly(): Promise<void> {
   try {
@@ -26,44 +23,42 @@ export function PlaybackKeepAwake() {
   const enabled = usePreferencesStore((state) => state.keepScreenOnWhilePlaying);
   const playing = usePlaybackStore((state) => state.playing);
   const buffering = usePlaybackStore((state) => state.buffering);
+  // Keep the screen on through buffering so a load does not dim mid-wait.
   const wantAwake = enabled && (playing || buffering);
-  const wantAwakeRef = useRef(wantAwake);
-  wantAwakeRef.current = wantAwake;
 
   useEffect(() => {
-    let cancelled = false;
+    let runAbort = new AbortController();
 
-    async function apply(): Promise<void> {
+    function apply(): void {
+      runAbort.abort();
+      runAbort = new AbortController();
+      if (!wantAwake) {
+        void deactivateQuietly();
+        return;
+      }
+      const { signal } = runAbort;
       // Native deactivate throws before removing the tag if the Activity is
       // gone; activate then skips FLAG_KEEP_SCREEN_ON. Retry until Activity exists.
-      for (let attempt = 0; attempt < 6 && !cancelled; attempt += 1) {
-        if (attempt > 0) {
-          await wait(150 * attempt);
-        }
-        if (cancelled) {
-          return;
-        }
+      void retryUntilActivity(async () => {
         await deactivateQuietly();
-        if (!wantAwakeRef.current || AppState.currentState !== "active") {
-          return;
+        if (!wantAwake || AppState.currentState !== "active") {
+          throw new AbortError("keep-awake not needed");
         }
-        try {
-          await activateKeepAwakeAsync(TAG);
-          return;
-        } catch {
-          // Activity still gone; loop.
-        }
-      }
+        await activateKeepAwakeAsync(TAG);
+      }, signal).catch(() => {
+        // Aborted, or Activity never came back.
+      });
     }
 
-    void apply();
+    apply();
+    // Android activity recreate drops FLAG_KEEP_SCREEN_ON; re-apply when we become active.
     const sub = AppState.addEventListener("change", (state) => {
       if (state === "active") {
-        void apply();
+        apply();
       }
     });
     return () => {
-      cancelled = true;
+      runAbort.abort();
       sub.remove();
       if (AppState.currentState === "active") {
         void deactivateQuietly();

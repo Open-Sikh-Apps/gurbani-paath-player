@@ -12,7 +12,7 @@ After editing native files in `node_modules`, regenerate with `npm run patch:nit
 
 ## Why we patch at all
 
-Nitrogen-generated `PlayerConfig` has no extra fields. Flags we need (skip-on-error, remote primary, Android notification icon) travel in `androidNotificationIcon` as a small token. Upstream adding real config keys would let us drop that side channel.
+Nitrogen-generated `PlayerConfig` has no extra fields. Flags we need (skip-on-error, remote primary, Android notification icon, http overflow) travel in `androidNotificationIcon` as a small token. Upstream adding real config keys would let us drop that side channel.
 
 ---
 
@@ -26,6 +26,8 @@ Nitrogen-generated `PlayerConfig` has no extra fields. Flags we need (skip-on-er
 ### ±10 across track boundaries
 
 In-app and remote ±10 are **one hop**: leftover time lands on the neighbour. First-track −10 stays at 0; last-track +10 stays at the end. Stock seek clamped inside the current file.
+
+Native has no NetInfo. JS packs `httpOverflow:1|0` in the same config token (`allowHttpOverflow`, default true). Online: leftover may start the next **stream**. Offline: leftover onto an `http(s)` neighbour **clamps**; `file:` neighbours still overflow. JS `subscribeNetwork` re-`configure`s when online flips.
 
 ### Lock screen, notification, Bluetooth (“remote primary”)
 
@@ -46,9 +48,25 @@ Android can show a failed state on the shade/lock screen (platform error code na
 
 `updateTracks` used to ignore the current item unless the URL was empty. Same URL, new title/artist/artwork (UI language) now updates Now Playing / the media session without rebuilding the live queue.
 
+### Android swipe-kill relaunch (PlaylistManager)
+
+Playing starts `NitroPlayerPlaybackService`. Swiping the app away kills the process; the next launch can create that service **before** React Native has loaded Nitro JNI. Stock playlist restore then constructs `AnyMap()` for `extraPayload` (`startAng`) and crashes (`UnsatisfiedLinkError` — that is an `Error`, so the existing `catch (Exception)` did not help).
+
+The patch loads `JNIOnLoad.initializeNativeNitro()` first. If the `.so` is not ready, tracks still restore (id/url/title) with `extraPayload`/hybrid artwork skipped. JS `loadAlbum` rebuilds the live queue once RN is up.
+
+### Android notification tap → Now Playing
+
+API 33+ System UI sends `sessionActivity` as a single `getActivity` PendingIntent. Stock would not issue the Expo VIEW URI. The patch adds a transparent `SessionActivityTrampoline` that turns the tap into `gurbaniaudioplayer://now-playing` (same as `npx uri-scheme open`). Manifest: exported, `excludeFromRecents`, `noHistory`, translucent. Needs a new native Android build.
+
 ### Android notification small icon
 
 The same config token can name a **drawable** (`notification_icon`). Prebuild copies `assets/notification-icon.png` into that resource. A string with no `:` is still treated as a bare icon name.
+
+### Android mediaPlayback foreground while buffering
+
+Media3 `isPlaying()` is false while buffering. Default `onTaskRemoved` then **pauses and stops** the service on recents-swipe during a rebuffer. `applyNotificationSmallIcon` also called `onUpdateNotification(session, false)`, which **stops FGS** on a live stream (NetInfo reconfigure, remote-primary change). A cached process still decoding a stream is then `am_kill`’d for CPU (OnePlus: `oom_adj=935`).
+
+The patch keeps `mediaPlayback` FGS while `playWhenReady` and state is `READY` or `BUFFERING`: `onUpdateNotification` ORs that in, icon refresh passes `true`, and `onTaskRemoved` returns without `super` when FGS is already up. After pause / end / error, Media3’s 10-minute FGS timeout is unchanged. Needs a new native Android build.
 
 ---
 

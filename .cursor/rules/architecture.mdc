@@ -5,17 +5,17 @@ alwaysApply: true
 
 # Architecture
 
-Locked stack: Expo SDK 57, Expo Router, Zustand + MMKV, i18next, Valibot, NativeWind v5 (Tailwind CSS v4 + `react-native-css`), `react-native-nitro-player`, R2+CDN, Cloudflare Pages, Sanity editor-only, optional Google Sign-in/Firebase in Settings, `@kesha-antonov/react-native-background-downloader` + `react-native-notify-kit`. Community app: no IAP. EAS local builds only. React Compiler on (`experiments.reactCompiler`).
+Locked stack: Expo SDK 57, Expo Router, Zustand + MMKV, i18next, Valibot, NativeWind v5 (Tailwind CSS v4 + `react-native-css`), `react-native-nitro-player`, R2+CDN, Cloudflare Pages, Sanity editor-only, optional Google Sign-in/Firebase in Settings, `@kesha-antonov/react-native-background-downloader` + `react-native-notify-kit`. `@react-native-community/netinfo` for internet monitoring. Community app: no IAP. EAS local builds only. React Compiler on (`experiments.reactCompiler`).
 
-Read https://docs.expo.dev/versions/v57.0.0/ before adding APIs. Follow `ROADMAP.md` for V1 phase order.
+Read https://docs.expo.dev/versions/v57.0.0/ before adding APIs. Follow `docs/ROADMAP.md` for V1 phase order.
 
 - **Folders:** routes in `src/app/`, screens in `src/screens/`, reusable UI in `src/components/`.
 - **Navigation:** JS `Tabs` + NativeWind `tabBar`. Details: `.cursor/rules/navigation.mdc`.
 - **UI:** NativeWind v5 (`@/tw` + `className`). No `StyleSheet.create`, raw hex, or a second styling system (`@expo/ui` is native controls only). Details: `.cursor/rules/i18n-and-ui.mdc`.
 - **Player:** `src/playback/` (`PlayerEngine` + one `react-native-nitro-player` adapter). Do not import `react-native-nitro-player` outside it. Do not use its `DownloadManager`, Cast, or equalizer. Details: `.cursor/rules/playback.mdc`.
-- **Media:** R2 + custom-domain CDN (`audio/`, `images/`). Immutable object URLs; new `trackId` if a file changes. Tracks under 512 MB.
+- **Media:** R2 + custom-domain CDN (`audio/`, `images/`). Immutable object URLs; new `trackId` if a file changes. Tracks under 512 MB (`byteSize` on recorded catalogue tracks).
 - **Catalogue:** Cloudflare Pages JSON, disk cache; app never calls Sanity (editor + webhook only). Schema and fetch: `.cursor/rules/catalogue.mdc`.
 - **State:** Zustand + MMKV. Local-first. Optional Google Sign-In in **Settings → Cloud sync** only. No wizard auth. No anonymous Firebase on launch. Cloud writes on pause / background / ~1min debounce — not every tick.
 - Screens import `playback`, `catalogue`, `downloads`, `sync` modules. They must not import `react-native-nitro-player`, `react-native-notify-kit`, Firebase, or Sanity directly.
 
-No photos of Gursikhs. Home hero is `catalogue.heroImageUrl` (Maharaj’s saroop).
+Home lists `sehaj_paath` by scripture (`imageUrl` + name), then reciter-named collections.

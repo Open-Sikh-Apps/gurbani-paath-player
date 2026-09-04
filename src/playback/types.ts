@@ -1,13 +1,16 @@
-import type { L10nText } from "@/types/catalogue";
+import type { CollectionKind, L10nText } from "@/types/catalogue";
 
 export const PLAYBACK_RATE_MIN = 0.25;
 export const PLAYBACK_RATE_MAX = 2;
 export const PLAYBACK_RATE_STEP = 0.25;
 export const DEFAULT_PLAYBACK_RATE = 1;
 
+/** Persist resume off the 1s progress tick. */
 export const RESUME_DEBOUNCE_MS = 1000;
 export const REMOTE_SKIP_SEC = 10;
+/** Drop stale progress ticks after skip/seek while native catches up. */
 export const IGNORE_PROGRESS_MS = 1200;
+/** User pause rewinds so resume is not mid-word; do not overflow to the previous track. */
 export const PAUSE_REWIND_SEC = 2;
 /** Android `drawable/` name for the media-session small icon (white silhouette). */
 export const ANDROID_NOTIFICATION_ICON = "notification_icon";
@@ -28,9 +31,13 @@ export function clampPlaybackRate(rate: number): number {
 
 export type SessionTrack = {
   id: string;
+  /** Playback source; may be `file:` after withLocalUrls. */
   url: string;
+  /** Immutable CDN identity; never rewritten to a local path. */
+  remoteUrl: string;
   title: L10nText;
   durationSec?: number;
+  byteSize?: number;
   startAng?: number;
 };
 
@@ -38,6 +45,7 @@ export type PlayerSession = {
   albumId: string;
   reciterName: L10nText;
   scriptureId?: string;
+  collectionKind?: CollectionKind;
   artworkUrl?: string;
   tracks: SessionTrack[];
 };
@@ -57,6 +65,8 @@ export type PlayerStatus = {
   buffering: boolean;
   error: string | null;
   rate: number;
+  /** Last track finished; play() must reload from 0 (native play at the last frame is a no-op). */
+  albumEnded: boolean;
 };
 
 export const idlePlayerStatus: PlayerStatus = {
@@ -69,8 +79,10 @@ export const idlePlayerStatus: PlayerStatus = {
   buffering: false,
   error: null,
   rate: DEFAULT_PLAYBACK_RATE,
+  albumEnded: false,
 };
 
+/** App-facing player. Only the adapter talks to react-native-nitro-player. */
 export type PlayerEngine = {
   loadAlbum: (
     session: PlayerSession,
@@ -86,6 +98,8 @@ export type PlayerEngine = {
   setRate: (rate: number) => Promise<void>;
   setSkipOnSourceError: (enabled: boolean) => Promise<void>;
   setRemotePrimary: (primary: RemotePrimary) => Promise<void>;
+  /** Downloads call via live-queue (dynamic import); patches upcoming URLs without restarting the current item. */
+  syncLiveQueueSources: () => void;
   subscribe: (listener: (status: PlayerStatus) => void) => () => void;
   getStatus: () => PlayerStatus;
 };

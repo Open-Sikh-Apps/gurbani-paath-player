@@ -7,18 +7,34 @@ import {
   useFonts,
 } from "@expo-google-fonts/noto-sans-gurmukhi";
 import { Stack, ThemeProvider } from "expo-router";
-import { StatusBar } from "expo-status-bar";
-import { NavigationBar } from 'expo-navigation-bar';
+import * as SplashScreen from "expo-splash-screen";
+import { SystemBars } from "react-native-edge-to-edge";
 
 import { useEffect, useState } from "react";
 import { AppState } from "react-native";
 
+import { CrashErrorBoundary } from "@/crash/error-boundary";
+import { CrashLastRunNotice } from "@/crash/last-run-notice";
 import { hydrateCatalogue, refreshCatalogue } from "@/catalogue";
+import { DownloadToastBridge } from "@/components/download-toast-bridge";
+import { FlushNotificationOpens } from "@/components/flush-notification-opens";
+import { OfflineChrome } from "@/components/offline-chrome";
 import { PlaybackKeepAwake } from "@/components/playback-keep-awake";
+import {
+  initDownloads,
+  initDownloadNotificationOpens,
+  isOnline,
+  syncDownloaderCellularPolicy,
+  useIsOnline,
+  waitForNetworkSnapshot,
+} from "@/downloads";
 import { useResolvedLocale } from "@/hooks/use-resolved-locale";
 import i18n from "@/i18n";
-import { initPlayback } from "@/playback";
+import { initPlayback, setRemotePrimary as applyRemotePrimary } from "@/playback";
 import { usePreferencesStore } from "@/state/preferences-store";
+import { waitAppPersisted } from "@/state/wait-persisted";
+import { applyPendingAppUpdate, probeAppUpdate } from "@/updates/check";
+import { JsSplash, OtaApplyingOverlay } from "@/updates/applying";
 import {
   applyCssColorScheme,
   applySystemBackground,
@@ -32,9 +48,25 @@ import {
 } from "@/theme/use-theme-colors";
 import { View, cn, ui } from "@/tw";
 
+// Keep Settings / Now Playing / Bookmarks stacked on tabs so dismissing a modal returns to Home, not an empty root.
 export const unstable_settings = {
   anchor: "(tabs)",
 };
+
+// Survive activity remount from a notification tap so we skip the splash gate and keep Stack mounted.
+let catalogueReady = false;
+
+// Splash wait caps, not fetch deadlines — refresh/probe continue after first paint.
+const CATALOGUE_REFRESH_SPLASH_MS = 5000;
+const OTA_PROBE_SPLASH_MS = 8000;
+
+async function hideNativeSplash(): Promise<void> {
+  try {
+    await SplashScreen.hideAsync();
+  } catch {
+    // Already gone, or this binary has no splash plugin yet.
+  }
+}
 
 export default function RootLayout() {
   const [fontsLoaded, fontError] = useFonts({
@@ -46,24 +78,115 @@ export default function RootLayout() {
   );
   const locale = useResolvedLocale();
   const theme = usePreferencesStore((state) => state.theme);
+  const wifiOnlyDownloads = usePreferencesStore((state) => state.wifiOnlyDownloads);
+  const remotePrimary = usePreferencesStore((state) => state.remotePrimary);
   const isDark = useIsDark();
   const colors = useThemeColors();
-  const [catalogueHydrated, setCatalogueHydrated] = useState(false);
+  const [ready, setReady] = useState(catalogueReady);
+  const online = useIsOnline();
+  const navigationBarStyle = isDark ? "light" : "dark";
+  // Invert status-bar icons while offline so they stay readable on the accent banner.
+  const statusBarStyle = online ? navigationBarStyle : isDark ? "dark" : "light";
 
   useEffect(() => {
+    // Native splash looks stuck; JS splash (spinner) is the wait UI from here on.
+    void hideNativeSplash();
+    // Lock-screen / headset session should exist during the spinner, not only after first paint.
+    initPlayback();
     let cancelled = false;
-    void hydrateCatalogue().finally(() => {
-      if (cancelled) {
+    void (async () => {
+      // First NetInfo callback can be wrong; wait so we neither skip a real online probe nor hit the Worker offline.
+      await waitForNetworkSnapshot();
+      if (cancelled || !isOnline()) {
         return;
       }
-      setCatalogueHydrated(true);
-      initPlayback();
-      void refreshCatalogue();
-    });
+      // One shared promise for the process; overlapping font load means the splash-bound race often already has a result.
+      void probeAppUpdate();
+    })();
     return () => {
       cancelled = true;
     };
   }, []);
+
+  useEffect(() => {
+    // Noto must be in before the idle OTA dialog so Punjabi copy does not flash.
+    if (!fontsLoaded && !fontError) {
+      return;
+    }
+    let cancelled = false;
+    void (async () => {
+      try {
+        await waitAppPersisted();
+        await hydrateCatalogue();
+        catalogueReady = true;
+        // Don't hold the spinner on a slow Pages fetch; the store keeps refreshing after paint.
+        await Promise.race([
+          refreshCatalogue(),
+          new Promise<void>((resolve) => {
+            setTimeout(resolve, CATALOGUE_REFRESH_SPLASH_MS);
+          }),
+        ]);
+      } finally {
+        if (cancelled) {
+          return;
+        }
+        // Same cap for the update check so a hung Worker cannot trap the spinner.
+        const probed = await Promise.race([
+          probeAppUpdate(),
+          new Promise<null>((resolve) => {
+            setTimeout(() => resolve(null), OTA_PROBE_SPLASH_MS);
+          }),
+        ]);
+        if (probed === true) {
+          // Re-attach jobs first so apply can pause/cancel instead of racing native work.
+          await initDownloads();
+          try {
+            const outcome = await applyPendingAppUpdate({
+              promptIfBusy: false,
+              silentHeadsUp: true,
+            });
+            if (outcome === "applied") {
+              // reloadAsync is tearing down JS; painting the old bundle would flash.
+              return;
+            }
+            setReady(true);
+            if (outcome === "busy") {
+              // Silent apply skipped while downloads/playback ran; the dialog needs this tree mounted.
+              void applyPendingAppUpdate({
+                promptIfBusy: true,
+                silentHeadsUp: false,
+              });
+            }
+            return;
+          } catch {
+            // Fall through to first paint.
+          }
+        }
+        setReady(true);
+        void initDownloads();
+        if (probed === null) {
+          // Splash cap elapsed with no result; paint now and finish the check in the background.
+          void probeAppUpdate().then(async (available) => {
+            if (!available) {
+              return;
+            }
+            await initDownloads();
+            try {
+              await applyPendingAppUpdate({
+                promptIfBusy: true,
+                silentHeadsUp: true,
+              });
+            } catch {
+              // Settings can retry.
+            }
+          });
+        }
+      }
+    })();
+    return () => {
+      cancelled = true;
+    };
+  }, [fontError, fontsLoaded]);
 
   useEffect(() => {
     void i18n.changeLanguage(locale);
@@ -74,77 +197,108 @@ export default function RootLayout() {
   }, [theme]);
 
   useEffect(() => {
+    applyRemotePrimary(remotePrimary);
+  }, [remotePrimary]);
+
+  useEffect(() => {
+    // Native jobs read this config, not MMKV; keep it aligned with the preference.
+    syncDownloaderCellularPolicy();
+  }, [wifiOnlyDownloads]);
+
+  useEffect(() => {
+    if (!hasCompletedWizard || !ready) {
+      return;
+    }
+    // Wizard owns the first permission prompt; tapping a download notification is a no-op before that.
+    initDownloadNotificationOpens();
+  }, [hasCompletedWizard, ready]);
+
+  useEffect(() => {
     function applyChrome(): void {
       applyCssColorScheme(schemeFromDark(isDark));
       applySystemBackground(colors.bg);
     }
     applyChrome();
-    let latestTimerId: number | undefined;
     const sub = AppState.addEventListener("change", (state) => {
+      // Android drops SystemUI background and CSS scheme after an activity recreate (notification remount).
       if (state === "active") {
-        if (latestTimerId) {
-          clearTimeout(latestTimerId);
-        }
-        latestTimerId = setTimeout(applyChrome, 300);
-      } else {
-        if (latestTimerId) {
-          clearTimeout(latestTimerId);
-        }
-        latestTimerId = undefined;
+        applyChrome();
       }
     });
     return () => {
-      if (latestTimerId) {
-        clearTimeout(latestTimerId);
-      }
       sub.remove();
     };
   }, [colors.bg, isDark]);
 
-  if ((!fontsLoaded && !fontError) || !catalogueHydrated) {
-    return null;
+  const chrome = (
+    <>
+      <SystemBars
+        style={{ navigationBar: navigationBarStyle, statusBar: statusBarStyle }}
+      />
+    </>
+  );
+
+  // Native splash is already hidden; this spinner holds first paint until hydrate + OTA gate. Must not return null — that dropped Stack on remount.
+  if (!ready) {
+    return (
+      <CrashErrorBoundary>
+        <ThemeProvider value={navigationTheme(isDark, colors)}>
+          <View className={cn("flex-1", ui.page)}>
+            <JsSplash />
+            {chrome}
+          </View>
+        </ThemeProvider>
+      </CrashErrorBoundary>
+    );
   }
 
   return (
-    <ThemeProvider value={navigationTheme(isDark, colors)}>
-      <View className={cn("flex-1", ui.page)}>
-        <StatusBar style={isDark ? "light" : "dark"} />
-        <PlaybackKeepAwake />
-        <Stack
-          screenOptions={{
-            headerShown: false
-          }}
-        >
-        <Stack.Protected guard={!hasCompletedWizard}>
-          <Stack.Screen name="wizard" />
-        </Stack.Protected>
-        <Stack.Protected guard={hasCompletedWizard}>
-          <Stack.Screen name="(tabs)" />
-          <Stack.Screen
-            name="settings"
-            options={{
-              presentation: "fullScreenModal",
-              headerShown: false,
-            }}
-          />
-          <Stack.Screen
-            name="now-playing"
-            options={{
-              presentation: "fullScreenModal",
-              headerShown: false,
-            }}
-          />
-          <Stack.Screen
-            name="bookmarks"
-            options={{
-              presentation: "fullScreenModal",
-              headerShown: false,
-            }}
-          />
-        </Stack.Protected>
-        </Stack>
-        <NavigationBar style={isDark ? "light" : "dark"}/>
-      </View>
-    </ThemeProvider>
+    <CrashErrorBoundary>
+      <ThemeProvider value={navigationTheme(isDark, colors)}>
+        <OfflineChrome>
+          <View className={cn("flex-1", ui.page)}>
+            <PlaybackKeepAwake />
+            <Stack
+              screenOptions={{
+                headerShown: false,
+              }}
+            >
+              <Stack.Protected guard={!hasCompletedWizard}>
+                <Stack.Screen name="wizard" />
+              </Stack.Protected>
+              <Stack.Protected guard={hasCompletedWizard}>
+                <Stack.Screen name="(tabs)" />
+                <Stack.Screen
+                  name="settings"
+                  options={{
+                    presentation: "fullScreenModal",
+                    headerShown: false,
+                  }}
+                />
+                <Stack.Screen
+                  name="now-playing"
+                  options={{
+                    presentation: "fullScreenModal",
+                    headerShown: false,
+                  }}
+                />
+                <Stack.Screen
+                  name="bookmarks"
+                  options={{
+                    presentation: "fullScreenModal",
+                    headerShown: false,
+                  }}
+                />
+              </Stack.Protected>
+            </Stack>
+            <FlushNotificationOpens />
+            <DownloadToastBridge />
+            <CrashLastRunNotice />
+            <OtaApplyingOverlay />
+            {chrome}
+          </View>
+        </OfflineChrome>
+      </ThemeProvider>
+    </CrashErrorBoundary>
   );
 }

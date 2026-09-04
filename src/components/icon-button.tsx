@@ -12,6 +12,7 @@ type IconButtonProps = {
   onPress: () => void;
   disabled?: boolean;
   selected?: boolean;
+  filled?: boolean;
   className?: string;
 };
 
@@ -25,6 +26,7 @@ export function IconButton({
   onPress,
   disabled,
   selected,
+  filled,
   className,
 }: IconButtonProps) {
   const hostRef = useRef<RNView>(null);
@@ -35,6 +37,7 @@ export function IconButton({
     if (!anchor) {
       return;
     }
+    // Auto-dismiss so a forgotten long-press does not leave a modal blocking taps.
     const timer = setTimeout(() => setAnchor(null), 1800);
     return () => clearTimeout(timer);
   }, [anchor]);
@@ -45,6 +48,7 @@ export function IconButton({
     });
   }
 
+  // Transport controls sit near the bottom; flip the tooltip up so it stays on screen.
   const showAbove = anchor != null && anchor.y > windowHeight * 0.7;
 
   return (
@@ -55,7 +59,12 @@ export function IconButton({
           accessibilityRole="button"
           accessibilityLabel={accessibilityLabel}
           accessibilityState={{ disabled, selected }}
-          className={cn("items-center justify-center px-2", disabled && "opacity-40", className)}
+          className={cn(
+            "items-center justify-center px-2",
+            filled && cn("rounded-full", ui.fillAccent),
+            disabled && "opacity-40",
+            className,
+          )}
           disabled={disabled}
           onPress={onPress}
           onLongPress={showTooltip}
@@ -64,10 +73,13 @@ export function IconButton({
           <AppIcon name={name} size={size} color={color} />
         </Pressable>
       </RNView>
+      {/* RN Modal is a separate window; without these, Android drops edge-to-edge on open. */}
       <Modal
         visible={anchor != null}
         transparent
         animationType="fade"
+        statusBarTranslucent
+        navigationBarTranslucent
         onRequestClose={() => setAnchor(null)}
       >
         <Pressable className="flex-1" onPress={() => setAnchor(null)}>

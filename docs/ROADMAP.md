@@ -7,17 +7,17 @@ Work **one phase at a time**. Extra features (audiobooks, radios, filters, float
 ## Phase 0 — Types and mock catalogue
 
 - Shared catalogue types + Valibot schema per `.cursor/rules/catalogue.mdc`.
-- Check in a small mock `catalogue.json` (1–2 `sehaj_paath` albums, a few tracks with `durationSec`, `startAng`, hero image URL, resources with `description`).
+- Check in a small mock `catalogue.json` (1–2 `sehaj_paath` albums, a few tracks with `durationSec`, `byteSize`, `startAng`, hero image URL, resources with `description`).
 - No Sanity or R2 required yet; app reads the mock / a Pages URL behind a single catalogue module.
 
 ## Phase 1 — App shell, theme, i18n, first-run wizard
 
 - App shell per `.cursor/rules/navigation.mdc` (slot mini player + Now Playing routes; wire UI in Phase 3).
-- NativeWind, i18n (`en`, `pa`), theme, and two-step first-run wizard per `.cursor/rules/i18n-and-ui.mdc`.
+- NativeWind, i18n (`en`, `pa`), theme, and three-step first-run wizard per `.cursor/rules/i18n-and-ui.mdc`.
 
 ## Phase 2 — Home and play an album
 
-- Home: Maharaj’s saroop + `sehaj_paath` list (reciter names, no portraits). Cache `heroImageUrl` with `expo-image`.
+- Home: `sehaj_paath` grouped by scripture (title + image), then reciter-named collections. Cache `scripture.imageUrl` with `expo-image`.
 - Catalogue refresh and disk cache per `.cursor/rules/catalogue.mdc`.
 - Playback module per `.cursor/rules/playback.mdc` (play one album; per-album resume).
 
@@ -31,17 +31,17 @@ Work **one phase at a time**. Extra features (audiobooks, radios, filters, float
 
 - Bookmarks with optional notes (timestamp + album/track).
 - Sleep timer and read along per `.cursor/rules/playback.mdc`.
-- Library add/remove album. Library has a link to History in the header. History lists albums sorted by last played (latest first), upto 10 entries; No duplicate album entries in History, show only latest.
+- Library add/remove album. Library has a link to History in the header. History is a listen **log** of tracks (own MMKV store, not resume): latest first, duplicate rows allowed, cap 50 events. Record only when the current track identity changes, and skip if the newest row is already that track. Main label is the track title; muted line is reciter + scripture for `sehaj_paath`, or collection title otherwise, plus a local-timezone start time. Newest row: Playing (open Now Playing) while that track is playing/buffering; resume time + play from position when paused mid-track; ended/start-of-track and older rows play from 0.
 - Resources screen grouped by `ResourceSection`, including gurbanisewa thanks.
 
-## Phase 5 — Offline downloads
+## Phase 5 — Downloads and Offline mode
 
 - Batch and per-track downloads, react-native-notify-kit progress, offline mode — per `.cursor/rules/playback.mdc`.
 
 ## Phase 6 — Optional cloud sync
 
 - Settings only: Sign in with Google.
-- Sync library, history, per-album positions, bookmarks, Simple mode, language, theme, wanted-offline ids.
+- Sync app state including preferences, history, bookmarks, library, per-album resume locations (and rates) and wanted-offline ids.
 - Merge last-write-wins (`updatedAt`). Never gate playback on an account.
 
 ## Phase 7 — Sharing
@@ -52,7 +52,7 @@ Work **one phase at a time**. Extra features (audiobooks, radios, filters, float
 
 ## Phase 8 — Publish pipeline (not store listing yet)
 
-- Sanity Studio for editing; webhook writes `catalogue.json` + version file to Pages.
+- Edit `catalogue.json` in `gurbani-paath-player-catalogue`; GitHub Actions fills missing `byteSize`, Valibot-validates, Wrangler-uploads to Pages. Sanity Studio is optional later.
 - Upload audio/images to R2 (`audio/{collectionId}/{trackId}.mp3`, hero on `images/`).
 - App icons, splash.
 

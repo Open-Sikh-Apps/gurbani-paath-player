@@ -1,17 +1,18 @@
 import { useTranslation } from "react-i18next";
+import { Linking, Platform } from "react-native";
 
 import { AppIcon } from "@/components/app-icon";
 import { useChrome } from "@/hooks/use-chrome";
 import { useDebouncedNavigation } from "@/hooks/use-debounced-navigation";
+import { openFeedbackMail } from "@/feedback/send";
+import { checkForAppUpdate } from "@/updates/check";
 import { SYSTEM_LOCALE, UI_LOCALES } from "@/i18n/locales";
-import {
-  setRemotePrimary as applyRemotePrimary,
-  type RemotePrimary,
-} from "@/playback";
+import { type RemotePrimary } from "@/playback";
 import { usePreferencesStore } from "@/state/preferences-store";
 import type { ThemePreference } from "@/theme/apply-theme";
 import { useThemeColors } from "@/theme/use-theme-colors";
 import { Pressable, ScrollView, Text, View, cn, ui } from "@/tw";
+import { clearToast, showToast } from "@/feedback/toast";
 
 const THEME_OPTIONS: { value: ThemePreference; labelKey: string }[] = [
   { value: "system", labelKey: "settings.themeSystem" },
@@ -19,6 +20,7 @@ const THEME_OPTIONS: { value: ThemePreference; labelKey: string }[] = [
   { value: "dark", labelKey: "settings.themeDark" },
 ];
 
+// Compact/Bluetooth/car follow this pair; in-app skip/seek stays ±10s / previous-next.
 const REMOTE_PRIMARY_OPTIONS: { value: RemotePrimary; labelKey: string }[] = [
   { value: "seek", labelKey: "settings.remotePrimarySeek" },
   { value: "skip", labelKey: "settings.remotePrimarySkip" },
@@ -26,7 +28,7 @@ const REMOTE_PRIMARY_OPTIONS: { value: RemotePrimary; labelKey: string }[] = [
 
 export function SettingsScreen() {
   const { t } = useTranslation();
-  const { hit, text, body, simpleMode } = useChrome();
+  const { hit, text, body, simpleMode, bodySmall, tabIcon } = useChrome();
   const localePreference = usePreferencesStore((state) => state.locale);
   const theme = usePreferencesStore((state) => state.theme);
   const setLocale = usePreferencesStore((state) => state.setLocale);
@@ -37,6 +39,12 @@ export function SettingsScreen() {
   );
   const setKeepScreenOnWhilePlaying = usePreferencesStore(
     (state) => state.setKeepScreenOnWhilePlaying,
+  );
+  const wifiOnlyDownloads = usePreferencesStore(
+    (state) => state.wifiOnlyDownloads,
+  );
+  const setWifiOnlyDownloads = usePreferencesStore(
+    (state) => state.setWifiOnlyDownloads,
   );
   const remotePrimary = usePreferencesStore((state) => state.remotePrimary);
   const setRemotePrimary = usePreferencesStore((state) => state.setRemotePrimary);
@@ -76,7 +84,7 @@ export function SettingsScreen() {
               >
                 <Text className={cn(ui.text, text)}>{item.label}</Text>
                 {selected ? (
-                  <AppIcon name="check" size={22} color={colors.accent} />
+                  <AppIcon name="check" size={tabIcon} color={colors.accent} />
                 ) : null}
               </Pressable>
             );
@@ -84,77 +92,129 @@ export function SettingsScreen() {
         </View>
       </View>
 
-      <View className="gap-3">
-        <Text className={cn(ui.muted, body)}>{t("settings.simpleMode")}</Text>
-        <Pressable
-          accessibilityRole="switch"
-          accessibilityState={{ checked: simpleMode }}
+      <Pressable
+        accessibilityRole="switch"
+        accessibilityState={{ checked: simpleMode }}
+        className={cn(
+          "flex-row items-center justify-between rounded-2xl border p-4",
+          ui.border,
+          ui.surface,
+          hit,
+        )}
+        onPress={() => setSimpleMode(!simpleMode)}
+      >
+        <View className="mr-4 flex-1 gap-1">
+          <Text className={cn(ui.text, text)}>{t("settings.simpleMode")}</Text>
+          <Text className={cn(ui.muted, bodySmall)}>
+            {t("settings.simpleModeHint")}
+          </Text>
+        </View>
+        <View
           className={cn(
-            "flex-row items-center justify-between rounded-2xl border px-4",
-            ui.border,
-            ui.surface,
-            hit,
+            "h-8 w-14 justify-center rounded-full px-1",
+            simpleMode ? ui.fillAccent : ui.fillBorder,
           )}
-          onPress={() => setSimpleMode(!simpleMode)}
         >
-          <View className="mr-4 flex-1 gap-1">
-            <Text className={cn(ui.text, text)}>{t("settings.simpleMode")}</Text>
-            <Text className={cn(ui.muted, simpleMode ? "text-base" : "text-sm")}>
-              {t("settings.simpleModeHint")}
-            </Text>
-          </View>
           <View
             className={cn(
-              "h-8 w-14 justify-center rounded-full px-1",
-              simpleMode ? ui.fillAccent : ui.fillBorder,
+              "h-6 w-6 rounded-full",
+              ui.fillSurface,
+              simpleMode ? "self-end" : "self-start",
             )}
-          >
-            <View
-              className={cn(
-                "h-6 w-6 rounded-full",
-                ui.fillSurface,
-                simpleMode ? "self-end" : "self-start",
-              )}
-            />
-          </View>
-        </Pressable>
-      </View>
+          />
+        </View>
+      </Pressable>
 
-      <View className="gap-3">
-        <Text className={cn(ui.muted, body)}>{t("settings.keepScreenOn")}</Text>
-        <Pressable
-          accessibilityRole="switch"
-          accessibilityState={{ checked: keepScreenOnWhilePlaying }}
+      <Pressable
+        accessibilityRole="switch"
+        accessibilityState={{ checked: keepScreenOnWhilePlaying }}
+        className={cn(
+          "flex-row items-center justify-between rounded-2xl border p-4",
+          ui.border,
+          ui.surface,
+          hit,
+        )}
+        onPress={() => setKeepScreenOnWhilePlaying(!keepScreenOnWhilePlaying)}
+      >
+        <View className="mr-4 flex-1 gap-1">
+          <Text className={cn(ui.text, text)}>{t("settings.keepScreenOn")}</Text>
+          <Text className={cn(ui.muted, bodySmall)}>
+            {t("settings.keepScreenOnHint")}
+          </Text>
+        </View>
+        <View
           className={cn(
-            "flex-row items-center justify-between rounded-2xl border px-4",
+            "h-8 w-14 justify-center rounded-full px-1",
+            keepScreenOnWhilePlaying ? ui.fillAccent : ui.fillBorder,
+          )}
+        >
+          <View
+            className={cn(
+              "h-6 w-6 rounded-full",
+              ui.fillSurface,
+              keepScreenOnWhilePlaying ? "self-end" : "self-start",
+            )}
+          />
+        </View>
+      </Pressable>
+
+      {Platform.OS === "android" ? (
+        <Pressable
+          accessibilityRole="button"
+          accessibilityLabel={t("settings.unrestrictedBattery")}
+          className={cn(
+            "flex-row items-center justify-between rounded-2xl border p-4",
             ui.border,
             ui.surface,
             hit,
           )}
-          onPress={() => setKeepScreenOnWhilePlaying(!keepScreenOnWhilePlaying)}
+          // OEM battery pages are not reliably deep-linkable; open app settings instead.
+          onPress={() => void Linking.openSettings()}
         >
           <View className="mr-4 flex-1 gap-1">
-            <Text className={cn(ui.text, text)}>{t("settings.keepScreenOn")}</Text>
-            <Text className={cn(ui.muted, simpleMode ? "text-base" : "text-sm")}>
-              {t("settings.keepScreenOnHint")}
+            <Text className={cn(ui.text, text)}>
+              {t("settings.unrestrictedBattery")}
+            </Text>
+            <Text className={cn(ui.muted, bodySmall)}>
+              {t("settings.unrestrictedBatteryHint")}
             </Text>
           </View>
+          <AppIcon name="chevron-right" size={tabIcon} color={colors.accent} />
+        </Pressable>
+      ) : null}
+
+      <Pressable
+        accessibilityRole="switch"
+        accessibilityState={{ checked: wifiOnlyDownloads }}
+        className={cn(
+          "flex-row items-center justify-between rounded-2xl border p-4",
+          ui.border,
+          ui.surface,
+          hit,
+        )}
+        onPress={() => setWifiOnlyDownloads(!wifiOnlyDownloads)}
+      >
+        <View className="mr-4 flex-1 gap-1">
+          <Text className={cn(ui.text, text)}>{t("settings.wifiOnly")}</Text>
+          <Text className={cn(ui.muted, bodySmall)}>
+            {t("settings.wifiOnlyHint")}
+          </Text>
+        </View>
+        <View
+          className={cn(
+            "h-8 w-14 justify-center rounded-full px-1",
+            wifiOnlyDownloads ? ui.fillAccent : ui.fillBorder,
+          )}
+        >
           <View
             className={cn(
-              "h-8 w-14 justify-center rounded-full px-1",
-              keepScreenOnWhilePlaying ? ui.fillAccent : ui.fillBorder,
+              "h-6 w-6 rounded-full",
+              ui.fillSurface,
+              wifiOnlyDownloads ? "self-end" : "self-start",
             )}
-          >
-            <View
-              className={cn(
-                "h-6 w-6 rounded-full",
-                ui.fillSurface,
-                keepScreenOnWhilePlaying ? "self-end" : "self-start",
-              )}
-            />
-          </View>
-        </Pressable>
-      </View>
+          />
+        </View>
+      </Pressable>
 
       <View className="gap-3">
         <Text className={cn(ui.muted, body)}>{t("settings.remotePrimary")}</Text>
@@ -173,20 +233,17 @@ export function SettingsScreen() {
                   hit,
                   index > 0 && cn("border-t", ui.border),
                 )}
-                onPress={() => {
-                  setRemotePrimary(option.value);
-                  applyRemotePrimary(option.value);
-                }}
+                onPress={() => setRemotePrimary(option.value)}
               >
                 <Text className={cn(ui.text, text)}>{t(option.labelKey)}</Text>
                 {selected ? (
-                  <AppIcon name="check" size={22} color={colors.accent} />
+                  <AppIcon name="check" size={tabIcon} color={colors.accent} />
                 ) : null}
               </Pressable>
             );
           })}
         </View>
-        <Text className={cn(ui.muted, simpleMode ? "text-base" : "text-sm")}>
+        <Text className={cn(ui.muted, bodySmall)}>
           {t("settings.remotePrimaryHint")}
         </Text>
       </View>
@@ -212,7 +269,7 @@ export function SettingsScreen() {
               >
                 <Text className={cn(ui.text, text)}>{t(option.labelKey)}</Text>
                 {selected ? (
-                  <AppIcon name="check" size={22} color={colors.accent} />
+                  <AppIcon name="check" size={tabIcon} color={colors.accent} />
                 ) : null}
               </Pressable>
             );
@@ -232,7 +289,47 @@ export function SettingsScreen() {
         onPress={() => navigate("/settings/resources")}
       >
         <Text className={cn(ui.text, text)}>{t("resources.title")}</Text>
-        <AppIcon name="chevron-right" size={22} color={colors.accent} />
+        <AppIcon name="chevron-right" size={tabIcon} color={colors.accent} />
+      </Pressable>
+
+      <Pressable
+        accessibilityRole="button"
+        accessibilityLabel={t("ota.check")}
+        className={cn(
+          "flex-row items-center justify-between rounded-2xl border px-4",
+          ui.border,
+          ui.surface,
+          hit,
+        )}
+        // `true` is a user tap — always show an alert, including none/failed.
+        onPress={async () => {
+          showToast(t("ota.loading"), false);
+          await checkForAppUpdate(true);
+          clearToast(true);
+        }}
+      >
+        <Text className={cn(ui.text, text)}>{t("ota.check")}</Text>
+        <AppIcon name="system-update" size={tabIcon} color={colors.accent} />
+      </Pressable>
+
+      <Pressable
+        accessibilityRole="button"
+        accessibilityLabel={t("settings.giveFeedback")}
+        className={cn(
+          "flex-row items-center justify-between rounded-2xl border p-4",
+          ui.border,
+          ui.surface,
+          hit,
+        )}
+        onPress={() => void openFeedbackMail()}
+      >
+        <View className="mr-4 flex-1 gap-1">
+          <Text className={cn(ui.text, text)}>{t("settings.giveFeedback")}</Text>
+          <Text className={cn(ui.muted, bodySmall)}>
+            {t("settings.giveFeedbackHint")}
+          </Text>
+        </View>
+        <AppIcon name="mail-outline" size={tabIcon} color={colors.accent} />
       </Pressable>
     </ScrollView>
   );

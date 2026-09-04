@@ -17,12 +17,20 @@ export {
   ANDROID_NOTIFICATION_ICON,
 } from "@/playback/types";
 export { getPlayerEngine } from "@/playback/engine";
-export { sessionFromSehajPaath } from "@/playback/session";
+export { requestNotificationPermission } from "@/playback/native-status";
+export {
+  getSessionTrack,
+  isLocalPlaybackUrl,
+  sessionFromCollection,
+  sessionFromSehajPaath,
+  withLocalUrls,
+} from "@/playback/session";
 export {
   formatDuration,
   initPlayback,
   pausePlayback,
   playAlbum,
+  trackAvailableOffline,
   seekBy,
   seekTo,
   setPlaybackRate,
@@ -45,5 +53,7 @@ export {
 export {
   getAlbumRate,
   getAlbumResume,
+  isEndedAlbumResume,
+  midTrackResumeSec,
   useResumeStore,
 } from "@/playback/resume-store";

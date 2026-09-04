@@ -8,6 +8,7 @@ import { resolveL10n } from "@/catalogue/resolve-l10n";
 import i18n from "@/i18n";
 import { FALLBACK_LOCALE } from "@/i18n/locales-constants";
 import { persistAlbumResume } from "@/playback/resume-store";
+import { getSessionTrack } from "@/playback/session";
 import {
   idlePlayerStatus,
   type PlayerSession,
@@ -32,6 +33,7 @@ export function toTrackItems(
   locale = currentLocale(),
 ): TrackItem[] {
   const reciter = resolveL10n(session.reciterName, locale);
+  // Media session has no separate album title; reciter fills artist and album so the shade is not blank.
   return session.tracks.map((track) => ({
     id: track.id,
     title: resolveL10n(track.title, locale),
@@ -52,9 +54,10 @@ export function trackInSession(
   if (!trackId) {
     return undefined;
   }
-  return session.tracks.find((item) => item.id === trackId);
+  return getSessionTrack(session, trackId);
 }
 
+/** Maps native state onto this session. A leftover id from the previous album must not be applied by index. */
 export function statusFromNative(
   session: PlayerSession | null,
   state: PlayerState | null,
@@ -62,6 +65,7 @@ export function statusFromNative(
   error: string | null = null,
 ): PlayerStatus {
   if (!session || !state) {
+    // Keep rate/error so a configure race does not wipe the album rate or a retryable error.
     return { ...idlePlayerStatus, rate, error };
   }
   const nativeId = state.currentTrack?.id;
@@ -77,6 +81,7 @@ export function statusFromNative(
     };
   }
   const currentIndex = Math.max(0, state.currentIndex);
+  // nativeId already passed the foreign-id guard; a missing id during a swap falls back to index.
   const track =
     trackInSession(session, nativeId) ?? session.tracks[currentIndex];
   return {
@@ -89,6 +94,7 @@ export function statusFromNative(
     buffering: state.currentState === "buffering",
     error,
     rate,
+    albumEnded: false,
   };
 }
 
@@ -96,8 +102,14 @@ export function persistFromStatus(status: PlayerStatus): void {
   if (!status.session || !status.currentTrackId) {
     return;
   }
+  // Album-end already wrote the last frame. Progress/emit after native `stopped`
+  // can report 0 and would look like the last track never started.
+  if (status.albumEnded) {
+    return;
+  }
   const track = trackInSession(status.session, status.currentTrackId);
-  const duration = track?.durationSec ?? status.durationSec;
+  // Native length first — catalogue durationSec can be shorter or longer than the file.
+  const duration = status.durationSec || track?.durationSec || 0;
   // Refuse a position past the track; album-swap ticks were persisting the other album's seek.
   if (duration > 0 && status.positionSec > duration + 1) {
     return;
@@ -106,11 +118,11 @@ export function persistFromStatus(status: PlayerStatus): void {
     trackId: status.currentTrackId,
     positionSec: Math.max(0, status.positionSec),
     updatedAt: Date.now(),
+    ...(duration > 0 ? { durationSec: duration } : {}),
   });
 }
 
-// Service death / audio-focus stop leaves ExoPlayer STATE_IDLE. play() without
-// prepare() is a no-op; currentTrack can still be set, so null-track is not enough.
+/** Service death / audio-focus stop leaves ExoPlayer STATE_IDLE. play() without prepare() is a no-op; currentTrack can still be set, so null-track is not enough. */
 export function isNativePlaybackDead(state: PlayerState | null): boolean {
   if (!state?.currentTrack?.id) {
     return true;

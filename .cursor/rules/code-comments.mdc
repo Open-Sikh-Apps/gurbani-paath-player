@@ -5,9 +5,13 @@ alwaysApply: true
 
 # Code comments
 
-When writing or editing code, put a **1–2 sentence comment immediately above** any non-obvious block: tricky control flow, workarounds, invariants, timing, caching, platform quirks, or anything a later reader would not infer from the names alone.
+This is an Expo / React Native **app**, not an `expo-*` SDK package. Follow Expo’s “quality over quantity” and “explain the iceberg” (failures, side effects, platform quirks) — not TSDoc on every export. Expo’s `@param` / `@platform` / `@example` style is for generated API docs, not screens and stores.
 
-Comment **why**, not what. Skip comments on straightforward code (simple returns, obvious maps, standard hooks).
+Put a **1–2 sentence `//` comment immediately above** any non-obvious block: tricky control flow, workarounds, invariants, timing, caching, platform quirks, or anything a later reader would not infer from the names alone.
+
+Use a short `/** … */` only when an export’s contract is not obvious from the name (side effects, import cycles, “do not call from X”).
+
+Comment **why**, not what. Skip straightforward code (simple returns, obvious maps, standard hooks). Do not repeat TypeScript types in comments. Do not add file-level READMEs.
 
 ```typescript
 // ❌ BAD — narrates the next line
@@ -20,4 +24,7 @@ setTimeout(() => flushResume(), 60_000);
 // ✅ GOOD — why, placed above the block
 // Persist on a 1-minute debounce so cloud writes stay off the playback tick.
 setTimeout(() => flushResume(), 60_000);
+
+// ✅ GOOD — export whose callers would otherwise create a cycle
+/** Downloads call this via dynamic import so the two modules do not import each other statically. */
 ```

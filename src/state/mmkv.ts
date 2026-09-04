@@ -13,6 +13,7 @@ function stateStorageFrom(mmkv: ReturnType<typeof createMMKV>): StateStorage {
   };
 }
 
+// Separate ids so clearing downloads/history cannot wipe preferences or the catalogue cache.
 const preferencesMmkv = createMMKV({ id: "preferences" });
 export const mmkvStateStorage = stateStorageFrom(preferencesMmkv);
 
@@ -25,3 +26,9 @@ export const bookmarksStateStorage = stateStorageFrom(bookmarksMmkv);
 
 const libraryMmkv = createMMKV({ id: "library" });
 export const libraryStateStorage = stateStorageFrom(libraryMmkv);
+
+const downloadsMmkv = createMMKV({ id: "downloads" });
+export const downloadsStateStorage = stateStorageFrom(downloadsMmkv);
+
+const historyMmkv = createMMKV({ id: "history" });
+export const historyStateStorage = stateStorageFrom(historyMmkv);

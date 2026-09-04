@@ -1,8 +1,8 @@
 {
   "expo": {
-    "name": "Gurbani Paath Player Offline",
-    "slug": "gurbani-paath-player",
-    "scheme": "gurbanipaath",
+    "name": "Gurbani audio player",
+    "slug": "gurbani-audio-player",
+    "scheme": "gurbaniaudioplayer",
     "version": "1.0.0",
     "orientation": "portrait",
     "icon": "./assets/icon.png",
@@ -15,26 +15,57 @@
       "en": "./src/i18n/native-metadata/en.json",
       "pa": "./src/i18n/native-metadata/pa.json"
     },
+    "runtimeVersion": "1.0.0",
+    "updates": {
+      "url": "https://updatesgurbaniaudioplayer.opensikhapps.com",
+      "checkAutomatically": "NEVER",
+      "fallbackToCacheTimeout": 0,
+      "requestHeaders": {
+        "expo-channel-name": "preview"
+      }
+    },
     "ios": {
       "supportsTablet": true,
-      "bundleIdentifier": "com.opensikhapps.gurbanipaathplayer",
+      "bundleIdentifier": "com.opensikhapps.gurbaniaudioplayer",
+      "associatedDomains": [
+        "applinks:gurbaniaudioplayer.opensikhapps.com"
+      ],
       "infoPlist": {
         "CFBundleAllowMixedLocalizations": true,
         "UIBackgroundModes": [
           "audio"
         ]
-      }
+      },
+      "googleServicesFile": "./GoogleService-Info.plist"
     },
     "android": {
       "adaptiveIcon": {
-        "backgroundColor": "#E6F4FE",
+        "backgroundColor": "#FF9800",
         "foregroundImage": "./assets/android-icon-foreground.png",
         "backgroundImage": "./assets/android-icon-background.png",
         "monochromeImage": "./assets/android-icon-monochrome.png"
       },
       "predictiveBackGestureEnabled": false,
-      "package": "com.opensikhapps.gurbanipaathplayer",
+      "package": "com.opensikhapps.gurbaniaudioplayer",
+      "googleServicesFile": "./google-services.json",
       "allowBackup": false,
+      "intentFilters": [
+        {
+          "action": "VIEW",
+          "autoVerify": true,
+          "data": [
+            {
+              "scheme": "https",
+              "host": "gurbaniaudioplayer.opensikhapps.com",
+              "pathPrefix": "/a"
+            }
+          ],
+          "category": [
+            "BROWSABLE",
+            "DEFAULT"
+          ]
+        }
+      ],
       "permissions": [
         "android.permission.FOREGROUND_SERVICE",
         "android.permission.FOREGROUND_SERVICE_MEDIA_PLAYBACK",
@@ -47,26 +78,69 @@
     },
     "plugins": [
       "expo-router",
-      "expo-status-bar",
+      "expo-updates",
+      [
+        "@sentry/react-native",
+        {
+          "url": "https://sentry.io/",
+          "organization": "jasdeep-singh-malhotra",
+          "project": "gurbaniaudioplayer"
+        }
+      ],
+      "@react-native-firebase/app",
+      "@react-native-firebase/auth",
+      "@react-native-google-signin/google-signin",
+      [
+        "expo-build-properties",
+        {
+          "ios": {
+            "useFrameworks": "dynamic"
+          }
+        }
+      ],
+      "expo-sharing",
+      "expo-web-browser",
       "expo-image",
       "expo-font",
       "expo-localization",
       "expo-asset",
+      "@react-native-vector-icons/material-icons",
+      "./plugins/with-android-notification-icon",
       [
-        "expo-navigation-bar",
+        "expo-splash-screen",
         {
-          "enforceContrast": false,
-          "hidden": false
+          "image": "./assets/icon.png",
+          "backgroundColor": "#F7F0E4",
+          "dark": {
+            "image": "./assets/icon.png",
+            "backgroundColor": "#0F1724"
+          }
         }
       ],
-      "@react-native-vector-icons/material-icons",
-      "./plugins/with-android-notification-icon"
+      [
+        "@kesha-antonov/react-native-background-downloader",
+        {
+          "skipMmkvDependency": true
+        }
+      ],
+      "react-native-notify-kit",
+      [
+        "react-native-edge-to-edge",
+        {
+          "android": {
+            "parentTheme": "Default",
+            "enforceNavigationBarContrast": false
+          }
+        }
+      ]
     ],
     "extra": {
       "router": {},
       "eas": {
-        "projectId": "542f5172-9afe-47ed-b04e-4d625c54765e"
-      }
-    }
+        "projectId": "f350048b-f2c9-4a14-9c67-65a9cbae34fb"
+      },
+      "googleWebClientId": "687386663876-8l7l063gc009embkou152a452cclebp1.apps.googleusercontent.com"
+    },
+    "owner": "cingh-jasdeep"
   }
 }
