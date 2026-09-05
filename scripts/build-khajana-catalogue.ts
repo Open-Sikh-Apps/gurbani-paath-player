@@ -30,8 +30,18 @@ const COPY_ROOT = resolve(
 const OUT_DIR = join(COPY_ROOT, "out");
 const UPLOAD_DIR = join(COPY_ROOT, "upload");
 const IDS_PATH = join(APP_ROOT, "scripts/khajana-ids.json");
-const IMAGE_SRC = join(COPY_ROOT, "sggsj.jpg");
-const IMAGE_PATH = "/images/sggsj.jpg";
+const IMAGE_LIGHT_SRC = join(
+  APP_ROOT,
+  "downloaded-assets/sevadaar-designer-app-icons/for-r2/sggsj-light.jpg",
+);
+const IMAGE_DARK_SRC = join(
+  APP_ROOT,
+  "downloaded-assets/sevadaar-designer-app-icons/for-r2/sggsj-dark.jpg",
+);
+const IMAGE_PATH = {
+  light: "/images/sggsj-light.jpg",
+  dark: "/images/sggsj-dark.jpg",
+};
 
 type ReciterKey =
   | "mehnga"
@@ -567,7 +577,8 @@ async function main(): Promise<void> {
   }
 
   mkdirSync(join(UPLOAD_DIR, "images"), { recursive: true });
-  copyFileSync(IMAGE_SRC, join(UPLOAD_DIR, "images/sggsj.jpg"));
+  copyFileSync(IMAGE_LIGHT_SRC, join(UPLOAD_DIR, "images/sggsj-light.jpg"));
+  copyFileSync(IMAGE_DARK_SRC, join(UPLOAD_DIR, "images/sggsj-dark.jpg"));
 
   const catalogue: Catalogue = {
     version: 1,

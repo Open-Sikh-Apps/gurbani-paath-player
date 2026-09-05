@@ -250,7 +250,7 @@ export default function RootLayout() {
     return (
       <CrashErrorBoundary>
         <ThemeProvider value={navigationTheme(isDark, colors)}>
-          <View className={cn("flex-1", ui.page)}>
+          <View className="flex-1">
             <JsSplash />
             {chrome}
           </View>

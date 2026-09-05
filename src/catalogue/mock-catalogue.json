@@ -1,6 +1,9 @@
 {
-  "version": 1,
-  "heroImageUrl": "/images/sggsj.jpg",
+  "version": 3,
+  "heroImageUrl": {
+    "light": "/images/sggsj-light.jpg",
+    "dark": "/images/sggsj-dark.jpg"
+  },
   "authors": [],
   "reciters": [
     {
@@ -54,7 +57,10 @@
         "pa": "ਸ੍ਰੀ ਗੁਰੂ ਗ੍ਰੰਥ ਸਾਹਿਬ ਜੀ"
       },
       "sttmCoSlug": "g",
-      "imageUrl": "/images/sggsj.jpg",
+      "imageUrl": {
+        "light": "/images/sggsj-light.jpg",
+        "dark": "/images/sggsj-dark.jpg"
+      },
       "aboutUrl": {
         "en": "https://www.sikhiwiki.org/index.php/Guru_Granth_Sahib",
         "pa": "https://pa.wikipedia.org/wiki/ਗੁਰੂ_ਗ੍ਰੰਥ_ਸਾਹਿਬ"
@@ -71,7 +77,10 @@
       ],
       "scriptureId": "f73973d6-8bd7-4972-a0b7-a951ee6d6bf1",
       "downloadable": true,
-      "artworkUrl": "/images/sggsj.jpg",
+      "artworkUrl": {
+        "light": "/images/sggsj-light.jpg",
+        "dark": "/images/sggsj-dark.jpg"
+      },
       "tracks": [
         {
           "kind": "sehaj_paath",
@@ -1943,7 +1952,10 @@
       ],
       "scriptureId": "f73973d6-8bd7-4972-a0b7-a951ee6d6bf1",
       "downloadable": true,
-      "artworkUrl": "/images/sggsj.jpg",
+      "artworkUrl": {
+        "light": "/images/sggsj-light.jpg",
+        "dark": "/images/sggsj-dark.jpg"
+      },
       "tracks": [
         {
           "kind": "sehaj_paath",
@@ -3776,7 +3788,10 @@
       ],
       "scriptureId": "f73973d6-8bd7-4972-a0b7-a951ee6d6bf1",
       "downloadable": true,
-      "artworkUrl": "/images/sggsj.jpg",
+      "artworkUrl": {
+        "light": "/images/sggsj-light.jpg",
+        "dark": "/images/sggsj-dark.jpg"
+      },
       "tracks": [
         {
           "kind": "sehaj_paath",
@@ -5609,7 +5624,10 @@
       ],
       "scriptureId": "f73973d6-8bd7-4972-a0b7-a951ee6d6bf1",
       "downloadable": true,
-      "artworkUrl": "/images/sggsj.jpg",
+      "artworkUrl": {
+        "light": "/images/sggsj-light.jpg",
+        "dark": "/images/sggsj-dark.jpg"
+      },
       "tracks": [
         {
           "kind": "sehaj_paath",
@@ -7338,7 +7356,10 @@
       ],
       "scriptureId": "f73973d6-8bd7-4972-a0b7-a951ee6d6bf1",
       "downloadable": true,
-      "artworkUrl": "/images/sggsj.jpg",
+      "artworkUrl": {
+        "light": "/images/sggsj-light.jpg",
+        "dark": "/images/sggsj-dark.jpg"
+      },
       "tracks": [
         {
           "kind": "sehaj_paath",
@@ -9639,7 +9660,10 @@
       ],
       "scriptureId": "f73973d6-8bd7-4972-a0b7-a951ee6d6bf1",
       "downloadable": true,
-      "artworkUrl": "/images/sggsj.jpg",
+      "artworkUrl": {
+        "light": "/images/sggsj-light.jpg",
+        "dark": "/images/sggsj-dark.jpg"
+      },
       "tracks": [
         {
           "kind": "sehaj_paath",
@@ -10974,28 +10998,41 @@
   ],
   "resourceSections": [
     {
-      "id": "f6b53aed-f30e-4ba1-8282-18810c0640af",
-      "title": {
-        "en": "Gurbani",
-        "pa": "ਗੁਰਬਾਣੀ"
-      }
-    },
-    {
-      "id": "fa3bc241-5e82-481f-9d12-e48a1183f222",
-      "title": {
-        "en": "Media",
-        "pa": "ਮੀਡੀਆ"
-      }
-    },
-    {
       "id": "973d9b4c-31c5-4948-aba9-2a8cf6165b08",
       "title": {
         "en": "Thanks",
         "pa": "ਧੰਨਵਾਦ"
       }
+    },
+    {
+      "id": "f6b53aed-f30e-4ba1-8282-18810c0640af",
+      "title": {
+        "en": "Gurbani Reading",
+        "pa": "ਗੁਰਬਾਣੀ ਪੜ੍ਹਨਾ"
+      }
+    },
+    {
+      "id": "fa3bc241-5e82-481f-9d12-e48a1183f222",
+      "title": {
+        "en": "Gurbani Media",
+        "pa": "ਗੁਰਬਾਣੀ ਮੀਡੀਆ"
+      }
     }
   ],
   "resources": [
+    {
+      "id": "a42b22dc-3f2c-4b6e-9ca3-7b50cd28bdbf",
+      "sectionId": "973d9b4c-31c5-4948-aba9-2a8cf6165b08",
+      "title": {
+        "en": "Thanks to Gurbani Sewa",
+        "pa": "ਗੁਰਬਾਣੀ ਸੇਵਾ ਦਾ ਧੰਨਵਾਦ"
+      },
+      "description": {
+        "en": "Special thanks to www.gurbanisewa.org for providing audio files.",
+        "pa": "ਆਡੀਓ ਫਾਈਲਾਂ ਦੇਣ ਲਈ www.gurbanisewa.org ਦਾ ਵਿਸ਼ੇਸ਼ ਧੰਨਵਾਦ।"
+      },
+      "url": "https://www.gurbanisewa.org"
+    },
     {
       "id": "fc3d677d-0828-482c-967c-e4f5fa47e283",
       "sectionId": "f6b53aed-f30e-4ba1-8282-18810c0640af",
@@ -11032,19 +11069,6 @@
       "description": {
         "en": "Gurbani katha, keertan, and other media from gurbanisewa.org.",
         "pa": "gurbanisewa.org ਤੋਂ ਗੁਰਬਾਣੀ ਕਥਾ, ਕੀਰਤਨ ਅਤੇ ਹੋਰ ਮੀਡੀਆ।"
-      },
-      "url": "https://www.gurbanisewa.org"
-    },
-    {
-      "id": "a42b22dc-3f2c-4b6e-9ca3-7b50cd28bdbf",
-      "sectionId": "973d9b4c-31c5-4948-aba9-2a8cf6165b08",
-      "title": {
-        "en": "Thanks to Gurbani Sewa",
-        "pa": "ਗੁਰਬਾਣੀ ਸੇਵਾ ਦਾ ਧੰਨਵਾਦ"
-      },
-      "description": {
-        "en": "Special thanks to www.gurbanisewa.org for providing audio files.",
-        "pa": "ਆਡੀਓ ਫਾਈਲਾਂ ਦੇਣ ਲਈ www.gurbanisewa.org ਦਾ ਵਿਸ਼ੇਸ਼ ਧੰਨਵਾਦ।"
       },
       "url": "https://www.gurbanisewa.org"
     }

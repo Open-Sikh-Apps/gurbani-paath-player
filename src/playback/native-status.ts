@@ -5,6 +5,7 @@ import {
 import type { PlayerState, TrackItem } from "react-native-nitro-player";
 
 import { resolveL10n } from "@/catalogue/resolve-l10n";
+import { pickThemedUrl } from "@/catalogue/themed-url";
 import i18n from "@/i18n";
 import { FALLBACK_LOCALE } from "@/i18n/locales-constants";
 import { persistAlbumResume } from "@/playback/resume-store";
@@ -15,6 +16,7 @@ import {
   type PlayerStatus,
   type SessionTrack,
 } from "@/playback/types";
+import { resolvedColorScheme } from "@/theme/use-theme-colors";
 
 export function currentLocale(): string {
   return i18n.resolvedLanguage ?? i18n.language ?? FALLBACK_LOCALE;
@@ -41,7 +43,7 @@ export function toTrackItems(
     album: reciter,
     duration: track.durationSec ?? 0,
     url: track.url,
-    artwork: session.artworkUrl,
+    artwork: pickThemedUrl(session.artworkUrl, resolvedColorScheme()),
     extraPayload:
       track.startAng != null ? { startAng: track.startAng } : undefined,
   }));

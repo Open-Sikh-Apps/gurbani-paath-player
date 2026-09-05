@@ -11,6 +11,15 @@ const mediaPathSchema = v.pipe(
 );
 export const mediaUrlSchema = v.union([nonEmptyUrl, mediaPathSchema]);
 
+// A plain string is both themes; `{ light, dark }` is used when art differs.
+export const themedMediaUrlSchema = v.union([
+  mediaUrlSchema,
+  v.object({
+    light: mediaUrlSchema,
+    dark: mediaUrlSchema,
+  }),
+]);
+
 export const l10nTextSchema = v.objectWithRest(
   { en: nonEmptyString },
   nonEmptyString,
@@ -24,7 +33,7 @@ export const l10nUrlSchema = v.objectWithRest(
 const namedEntityBase = {
   id: nonEmptyString,
   name: l10nTextSchema,
-  imageUrl: v.optional(mediaUrlSchema),
+  imageUrl: v.optional(themedMediaUrlSchema),
   aboutUrl: v.optional(l10nUrlSchema),
 };
 
@@ -102,7 +111,7 @@ const collectionBase = {
   title: v.optional(l10nTextSchema),
   authorId: v.optional(nonEmptyString),
   languages: v.pipe(v.array(nonEmptyString), v.nonEmpty()),
-  artworkUrl: v.optional(mediaUrlSchema),
+  artworkUrl: v.optional(themedMediaUrlSchema),
   downloadable: v.boolean(),
 };
 
@@ -132,7 +141,7 @@ export const collectionSchema = v.variant("kind", [
 
 export const catalogueObjectSchema = v.object({
   version: finiteNumber,
-  heroImageUrl: mediaUrlSchema,
+  heroImageUrl: themedMediaUrlSchema,
   authors: v.array(namedEntitySchema),
   reciters: v.array(namedEntitySchema),
   scriptures: v.array(scriptureSchema),
@@ -212,6 +221,7 @@ export const catalogueSchema = v.pipe(
 
 export type L10nText = v.InferOutput<typeof l10nTextSchema>;
 export type L10nUrl = v.InferOutput<typeof l10nUrlSchema>;
+export type ThemedMediaUrl = v.InferOutput<typeof themedMediaUrlSchema>;
 export type Author = v.InferOutput<typeof namedEntitySchema>;
 export type Reciter = Author;
 export type Scripture = v.InferOutput<typeof scriptureSchema>;

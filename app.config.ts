@@ -3,6 +3,8 @@ import { ExpoConfig, ConfigContext } from "expo/config";
 import "tsx/cjs";
 
 import { shouldUseMockCatalogue } from "./src/catalogue/mock-catalogue-flag";
+import { SPLASH_IMAGE_WIDTH } from "./src/splash/constants";
+import { palette } from "./src/theme/colors";
 
 export default ({ config }: ConfigContext): ExpoConfig => {
   const easProfile = process.env.EAS_BUILD_PROFILE;
@@ -29,6 +31,7 @@ export default ({ config }: ConfigContext): ExpoConfig => {
   return {
     // Spread app.json so EAS/plugins can mutate the object; this file only fills name/slug fallbacks.
     ...config,
+    icon: "./assets/icon-light.png",
     name: process.env.APP_VARIANT === "development" ? "Gurbani audio player (dev)" : config.name ?? "Gurbani audio player",
     slug: config.slug ?? "gurbani-audio-player",
     scheme: process.env.APP_VARIANT === "development" ? "gurbaniaudioplayer-dev" : config.scheme ?? "gurbaniaudioplayer",
@@ -39,10 +42,32 @@ export default ({ config }: ConfigContext): ExpoConfig => {
         "expo-channel-name": otaChannel,
       },
     },
+    plugins: (config.plugins ?? []).map((plugin) => {
+      if (Array.isArray(plugin) && plugin[0] === "expo-splash-screen") {
+        return [
+          "expo-splash-screen",
+          {
+            image: "./assets/icon-light.png",
+            backgroundColor: palette.light.bg,
+            imageWidth: SPLASH_IMAGE_WIDTH,
+            dark: {
+              image: "./assets/icon-dark.png",
+              backgroundColor: palette.dark.bg,
+            },
+          },
+        ];
+      }
+      return plugin;
+    }),
     android: {
       ...config.android,
       package: process.env.APP_VARIANT === "development" ? "com.opensikhapps.gurbaniaudioplayer.dev" : config.android?.package ?? "com.opensikhapps.gurbaniaudioplayer",
       googleServicesFile: process.env.APP_VARIANT === "development" ? "./google-services-dev.json" : config.android?.googleServicesFile ?? "./google-services.json",
+      // Full-bleed illustration; cream fill matches the light art at the adaptive mask.
+      adaptiveIcon: {
+        foregroundImage: "./assets/icon-light.png",
+        backgroundColor: palette.light.bg,
+      },
       intentFilters: [
         {
           action: "VIEW",
@@ -60,6 +85,10 @@ export default ({ config }: ConfigContext): ExpoConfig => {
     },
     ios: {
       ...config.ios,
+      icon: {
+        light: "./assets/icon-light.png",
+        dark: "./assets/icon-dark.png",
+      },
       bundleIdentifier: process.env.APP_VARIANT === "development" ? "com.opensikhapps.gurbaniaudioplayer.dev" : config.ios?.bundleIdentifier ?? "com.opensikhapps.gurbaniaudioplayer",
       googleServicesFile: process.env.APP_VARIANT === "development" ? "./GoogleService-Info-dev.plist" : config.ios?.googleServicesFile ?? "./GoogleService-Info.plist",
       associatedDomains: process.env.APP_VARIANT === "development" ? ["applinks:gurbaniaudioplayer-dev.opensikhapps.com"] : config.ios?.associatedDomains ?? [

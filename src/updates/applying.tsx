@@ -1,10 +1,19 @@
 import { create } from "zustand";
-import { ActivityIndicator } from "react-native";
+import { ActivityIndicator, Appearance } from "react-native";
+import { useState } from "react";
 import { useTranslation } from "react-i18next";
 
 import { useChrome } from "@/hooks/use-chrome";
-import { useThemeColors } from "@/theme/use-theme-colors";
-import { Text, View, cn, ui } from "@/tw";
+import { SPLASH_IMAGE_WIDTH } from "@/splash/constants";
+import {
+  colorsFor,
+  type ColorSchemeName,
+} from "@/theme/colors";
+import { useIsDark } from "@/theme/use-theme-colors";
+import { Image, Text, View, cn } from "@/tw";
+
+const splashLight = require("../../assets/icon-light.png");
+const splashDark = require("../../assets/icon-dark.png");
 
 type ApplyingState = {
   applying: boolean;
@@ -20,24 +29,46 @@ export const useOtaApplyingStore = create<ApplyingState>((set) => ({
 function SplashChrome({
   message,
   overlay,
+  scheme,
 }: {
   message: string;
   overlay?: boolean;
+  scheme: ColorSchemeName;
 }) {
   const { body } = useChrome();
-  const colors = useThemeColors();
+  const splash = colorsFor(scheme);
   return (
     <View
       accessibilityRole="progressbar"
       accessibilityLabel={message}
-      className={cn(
-        "items-center justify-center gap-4 px-8",
-        ui.page,
-        overlay ? "absolute inset-0 z-60" : "flex-1",
-      )}
+      className={overlay ? "absolute inset-0 z-60" : "flex-1"}
+      style={{ backgroundColor: splash.bg }}
     >
-      <ActivityIndicator size="large" color={colors.accent} />
-      <Text className={cn("text-center", ui.text, body)}>{message}</Text>
+      {/* Native splash centers this image; keep it pinned so the loader cannot shift it. */}
+      <View
+        pointerEvents="none"
+        className="absolute inset-0 items-center justify-center"
+      >
+        <Image
+          source={scheme === "dark" ? splashDark : splashLight}
+          accessible={false}
+          accessibilityIgnoresInvertColors
+          contentFit="contain"
+          style={{ width: SPLASH_IMAGE_WIDTH, height: SPLASH_IMAGE_WIDTH }}
+        />
+      </View>
+      <View
+        className="absolute inset-x-0 items-center gap-4 px-8"
+        style={{
+          top: "50%",
+          marginTop: SPLASH_IMAGE_WIDTH / 2 + 16,
+        }}
+      >
+        <ActivityIndicator size="large" color={splash.accent} />
+        <Text className={cn("text-center", body)} style={{ color: splash.text }}>
+          {message}
+        </Text>
+      </View>
     </View>
   );
 }
@@ -49,17 +80,31 @@ function SplashChrome({
 export function JsSplash() {
   const { t } = useTranslation();
   const applying = useOtaApplyingStore((state) => state.applying);
+  // Native splash follows OS appearance; freeze that so a Settings theme cannot swap the logo mid-gate.
+  const [handoffScheme] = useState<ColorSchemeName>(() =>
+    Appearance.getColorScheme() === "dark" ? "dark" : "light",
+  );
   return (
-    <SplashChrome message={applying ? t("ota.applying") : t("ota.loading")} />
+    <SplashChrome
+      scheme={handoffScheme}
+      message={applying ? t("ota.applying") : t("ota.loading")}
+    />
   );
 }
 
-/** Same spinner after first paint (Settings / busy confirm). Dies on reload. */
+/** Same chrome after first paint (Settings / busy confirm). Dies on reload. */
 export function OtaApplyingOverlay() {
   const { t } = useTranslation();
   const applying = useOtaApplyingStore((state) => state.applying);
+  const isDark = useIsDark();
   if (!applying) {
     return null;
   }
-  return <SplashChrome overlay message={t("ota.applying")} />;
+  return (
+    <SplashChrome
+      overlay
+      scheme={isDark ? "dark" : "light"}
+      message={t("ota.applying")}
+    />
+  );
 }

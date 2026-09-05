@@ -38,8 +38,11 @@ while IFS= read -r rel; do
   put_object "$rel" "$UPLOAD_DIR/$rel" "audio/mpeg"
 done < <(find audio -type f -name '*.mp3' | sort)
 
-if [[ -f "$UPLOAD_DIR/images/sggsj.jpg" ]]; then
-  put_object "images/sggsj.jpg" "$UPLOAD_DIR/images/sggsj.jpg" "image/jpeg"
+if [[ -f "$UPLOAD_DIR/images/sggsj-light.jpg" ]]; then
+  put_object "images/sggsj-light.jpg" "$UPLOAD_DIR/images/sggsj-light.jpg" "image/jpeg"
+fi
+if [[ -f "$UPLOAD_DIR/images/sggsj-dark.jpg" ]]; then
+  put_object "images/sggsj-dark.jpg" "$UPLOAD_DIR/images/sggsj-dark.jpg" "image/jpeg"
 fi
 
 echo "Done. Next: copy catalogue.json and catalogue.version.json into gurbani-paath-player-catalogue and push."

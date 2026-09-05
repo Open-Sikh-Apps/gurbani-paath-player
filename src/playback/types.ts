@@ -1,4 +1,4 @@
-import type { CollectionKind, L10nText } from "@/types/catalogue";
+import type { CollectionKind, L10nText, ThemedMediaUrl } from "@/types/catalogue";
 
 export const PLAYBACK_RATE_MIN = 0.25;
 export const PLAYBACK_RATE_MAX = 2;
@@ -46,7 +46,7 @@ export type PlayerSession = {
   reciterName: L10nText;
   scriptureId?: string;
   collectionKind?: CollectionKind;
-  artworkUrl?: string;
+  artworkUrl?: ThemedMediaUrl;
   tracks: SessionTrack[];
 };
 

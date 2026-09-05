@@ -12,6 +12,7 @@ export type {
   RadioTrack,
   RadioCollection,
   Reciter,
+  ThemedMediaUrl,
   SehajPaathTrack,
   AudiobookTrack,
   ResourceItem,
@@ -26,6 +27,7 @@ export { getCatalogueBaseUrl } from "@/catalogue/base-url";
 export { getMediaBaseUrl } from "@/catalogue/media-base-url";
 export { shouldUseMockCatalogue } from "@/catalogue/mock-catalogue-flag";
 export { resolveCatalogueMedia, resolveMediaUrl } from "@/catalogue/media-url";
+export { pickThemedUrl } from "@/catalogue/themed-url";
 export {
   hydrateCatalogue,
   refreshCatalogue,

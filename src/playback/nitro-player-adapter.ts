@@ -7,6 +7,7 @@ import {
 } from "react-native-nitro-player";
 import { AppState, type NativeEventSubscription } from "react-native";
 
+import { pickThemedUrl } from "@/catalogue/themed-url";
 import i18n from "@/i18n";
 import { isOnline, playableUrlFor, subscribeNetwork } from "@/downloads";
 import { attachNativePlayerListeners } from "@/playback/native-listeners";
@@ -28,6 +29,10 @@ import {
 import { snapshotsEqual, trackIndex, withLocalUrls } from "@/playback/session";
 import { usePlaybackStore } from "@/playback/status-store";
 import { usePreferencesStore } from "@/state/preferences-store";
+import {
+  resolvedColorScheme,
+  subscribeResolvedColorScheme,
+} from "@/theme/use-theme-colors";
 import {
   clampPlaybackRate,
   DEFAULT_PLAYBACK_RATE,
@@ -379,6 +384,16 @@ export function createNitroPlayerEngine(): PlayerEngine {
         return;
       }
       const tracks = toTrackItems(session, lng);
+      fire(async () => {
+        await TrackPlayer.updateTracks(tracks);
+      });
+    });
+    // Lock-screen art follows in-app theme; same updateTracks path as language change.
+    subscribeResolvedColorScheme(() => {
+      if (!session) {
+        return;
+      }
+      const tracks = toTrackItems(session);
       fire(async () => {
         await TrackPlayer.updateTracks(tracks);
       });
@@ -836,7 +851,7 @@ export function createNitroPlayerEngine(): PlayerEngine {
       const playlistId = await PlayerQueue.createPlaylist(
         frozen.albumId,
         undefined,
-        frozen.artworkUrl,
+        pickThemedUrl(frozen.artworkUrl, resolvedColorScheme()),
       );
       await PlayerQueue.addTracksToPlaylist(playlistId, tracks);
       await TrackPlayer.setRepeatMode("off");

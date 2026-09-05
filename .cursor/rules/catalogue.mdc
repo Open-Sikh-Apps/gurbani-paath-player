@@ -13,25 +13,28 @@ Host: Cloudflare Pages Direct Upload from `Open-Sikh-Apps/gurbani-paath-player-c
 ```ts
 type L10nText = { en: string; [locale: string]: string };
 type L10nUrl = { en: string; [locale: string]: string };
+type ThemedMediaUrl =
+  | string
+  | { light: string; dark: string };
 
 type Author = {
   id: string;
   name: L10nText;
-  imageUrl?: string;
+  imageUrl?: ThemedMediaUrl;
   aboutUrl?: L10nUrl;
 };
 
 type Reciter = {
   id: string;
   name: L10nText;
-  imageUrl?: string; // unused on Paath Home; no Gursikh portraits
+  imageUrl?: ThemedMediaUrl;
   aboutUrl?: L10nUrl;
 };
 
 type Scripture = {
   id: string;
   name: L10nText;
-  imageUrl?: string; // `/images/…` or https
+  imageUrl?: ThemedMediaUrl; // `/images/…` or https; `{ light, dark }` when both exist
   aboutUrl?: L10nUrl;
   sttmCoSlug?: string; // https://sttm.co/{sttmCoSlug}/{startAng}
 };
@@ -82,7 +85,7 @@ type CollectionBase = {
   title?: L10nText;
   authorId?: string;
   languages: string[];
-  artworkUrl?: string;
+  artworkUrl?: ThemedMediaUrl;
   downloadable: boolean;
 };
 
@@ -111,7 +114,7 @@ type Collection = SehajPaathCollection | AudiobookCollection | RadioCollection;
 
 type Catalogue = {
   version: number;
-  heroImageUrl: string;
+  heroImageUrl: ThemedMediaUrl;
   authors: Author[];
   reciters: Reciter[];
   scriptures: Scripture[];

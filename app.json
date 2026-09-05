@@ -5,7 +5,7 @@
     "scheme": "gurbaniaudioplayer",
     "version": "1.0.0",
     "orientation": "portrait",
-    "icon": "./assets/icon.png",
+    "icon": "./assets/icon-light.png",
     "userInterfaceStyle": "automatic",
     "experiments": {
       "typedRoutes": true,
@@ -15,7 +15,7 @@
       "en": "./src/i18n/native-metadata/en.json",
       "pa": "./src/i18n/native-metadata/pa.json"
     },
-    "runtimeVersion": "1.0.1",
+    "runtimeVersion": "1.0.2",
     "updates": {
       "url": "https://updatesgurbaniaudioplayer.opensikhapps.com",
       "checkAutomatically": "NEVER",
@@ -40,10 +40,8 @@
     },
     "android": {
       "adaptiveIcon": {
-        "backgroundColor": "#FF9800",
-        "foregroundImage": "./assets/android-icon-foreground.png",
-        "backgroundImage": "./assets/android-icon-background.png",
-        "monochromeImage": "./assets/android-icon-monochrome.png"
+        "backgroundColor": "#F7F0E4",
+        "foregroundImage": "./assets/icon-light.png"
       },
       "predictiveBackGestureEnabled": false,
       "package": "com.opensikhapps.gurbaniaudioplayer",
@@ -93,10 +91,10 @@
       [
         "expo-splash-screen",
         {
-          "image": "./assets/icon.png",
+          "image": "./assets/icon-light.png",
           "backgroundColor": "#F7F0E4",
           "dark": {
-            "image": "./assets/icon.png",
+            "image": "./assets/icon-dark.png",
             "backgroundColor": "#0F1724"
           }
         }

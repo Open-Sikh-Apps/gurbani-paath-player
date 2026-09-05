@@ -216,7 +216,7 @@ export function HomeScreen() {
                 </View>
                 <CatalogueImage
                   uri={scripture.imageUrl}
-                  className="aspect-4/3"
+                  className="aspect-square"
                   accessibilityLabel={scriptureName}
                 />
                 {collections.map((album) => (

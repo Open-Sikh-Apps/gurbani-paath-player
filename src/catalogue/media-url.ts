@@ -1,4 +1,4 @@
-import type { Catalogue, Collection } from "@/catalogue/schema";
+import type { Catalogue, Collection, ThemedMediaUrl } from "@/catalogue/schema";
 import { getMediaBaseUrl } from "@/catalogue/media-base-url";
 
 const ABSOLUTE = /^https?:\/\//i;
@@ -15,8 +15,20 @@ export function resolveMediaUrl(url: string): string {
   return `${base}${url}`;
 }
 
-function mapOptional(url: string | undefined): string | undefined {
-  return url == null ? undefined : resolveMediaUrl(url);
+function resolveThemedMediaUrl(url: ThemedMediaUrl): ThemedMediaUrl {
+  if (typeof url === "string") {
+    return resolveMediaUrl(url);
+  }
+  return {
+    light: resolveMediaUrl(url.light),
+    dark: resolveMediaUrl(url.dark),
+  };
+}
+
+function mapOptional(
+  url: ThemedMediaUrl | undefined,
+): ThemedMediaUrl | undefined {
+  return url == null ? undefined : resolveThemedMediaUrl(url);
 }
 
 function withResolvedUrl<T extends { url: string }>(item: T): T {
@@ -52,7 +64,7 @@ function resolveCollection(collection: Collection): Collection {
 export function resolveCatalogueMedia(catalogue: Catalogue): Catalogue {
   return {
     ...catalogue,
-    heroImageUrl: resolveMediaUrl(catalogue.heroImageUrl),
+    heroImageUrl: resolveThemedMediaUrl(catalogue.heroImageUrl),
     authors: catalogue.authors.map((author) => ({
       ...author,
       imageUrl: mapOptional(author.imageUrl),

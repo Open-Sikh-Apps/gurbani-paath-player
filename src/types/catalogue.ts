@@ -6,6 +6,7 @@ export type {
   L10nText,
   L10nUrl,
   Reciter,
+  ThemedMediaUrl,
   Track,
   SehajPaathTrack,
   AudiobookTrack,
