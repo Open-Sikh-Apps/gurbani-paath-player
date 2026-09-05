@@ -14,7 +14,12 @@ export function OfflineChrome({ children }: { children: ReactNode }) {
   const { text } = useChrome();
   const insets = useSafeAreaInsets();
   const online = useIsOnline();
-  const hasDownloads = useDownloadStore((state) => state.hasCompleted);
+  // Read files, not the cached flag — persist used to leave hasCompleted false until a later write.
+  const hasDownloads = useDownloadStore((state) =>
+    Object.values(state.files).some(
+      (file) => file.status === "completed" || file.status === "orphan",
+    ),
+  );
   // Consume the top inset in the banner so JS chrome below does not pad twice.
   const provided = online ? insets : { ...insets, top: 0 };
 
@@ -22,7 +27,7 @@ export function OfflineChrome({ children }: { children: ReactNode }) {
     <SafeAreaInsetsContext.Provider value={provided}>
       {online ? null : (
         <View
-          className={cn("px-4 py-2", ui.fillAccent)}
+          className={cn("gap-1 px-4 py-2", ui.fillAccent)}
           style={{ paddingTop: insets.top + 8 }}
         >
           <Text className={cn("text-center font-semibold", ui.accentFg, text)}>

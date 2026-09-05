@@ -10,6 +10,11 @@ import {
 import i18n from "@/i18n";
 import { pausePlayback, usePlaybackStore } from "@/playback";
 import { useOtaApplyingStore } from "@/updates/applying";
+import {
+  isSameLaunchAsset,
+  LAUNCH_HASH_EXTRA_PARAM,
+  launchAssetHashFromManifest,
+} from "@/updates/launch-hash";
 
 /** One in-flight Worker check per JS lifetime so cold start and apply share a result. */
 let probePromise: Promise<boolean> | null = null;
@@ -80,6 +85,29 @@ function promptSilentApply(): Promise<void> {
   });
 }
 
+/** Tell the Worker the running launch hash so it can 204 instead of a same-bytes manifest. */
+async function advertiseRunningLaunchHash(): Promise<void> {
+  const hash = launchAssetHashFromManifest(Updates.manifest);
+  if (!hash) {
+    return;
+  }
+  try {
+    await Updates.setExtraParamAsync(LAUNCH_HASH_EXTRA_PARAM, hash);
+  } catch {
+    // Extra params are unavailable in Expo Go / when updates is disabled.
+  }
+}
+
+async function remoteUpdateIsPending(): Promise<boolean> {
+  await advertiseRunningLaunchHash();
+  const check = await Updates.checkForUpdateAsync();
+  if (!check.isAvailable) {
+    return false;
+  }
+  // Native still says available when ids differ but Hermes bytes match (new APK vs just-published OTA).
+  return !isSameLaunchAsset(Updates.manifest, check.manifest);
+}
+
 /** Manifest check only. Safe to start as soon as NetInfo says online. */
 export function probeAppUpdate(): Promise<boolean> {
   if (probePromise) {
@@ -90,8 +118,7 @@ export function probeAppUpdate(): Promise<boolean> {
       return false;
     }
     try {
-      const check = await Updates.checkForUpdateAsync();
-      return check.isAvailable;
+      return await remoteUpdateIsPending();
     } catch {
       return false;
     }
@@ -142,8 +169,9 @@ export async function checkForAppUpdate(fromSettings: boolean): Promise<void> {
     return;
   }
   try {
-    const check = await Updates.checkForUpdateAsync();
-    if (!check.isAvailable) {
+    const pending = await remoteUpdateIsPending();
+    if (!pending) {
+      probePromise = Promise.resolve(false);
       if (fromSettings) {
         Alert.alert(i18n.t("ota.check"), i18n.t("ota.none"));
       }

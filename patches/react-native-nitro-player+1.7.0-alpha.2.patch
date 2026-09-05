@@ -208,7 +208,7 @@ index 032b91e..ebbd9d5 100644
  @OptIn(UnstableApi::class)
  internal fun TrackPlayerCore.applyRemoteSkipIntervals() {
 diff --git a/node_modules/react-native-nitro-player/android/src/main/java/com/margelo/nitro/nitroplayer/core/TrackPlayerQueueBuild.kt b/node_modules/react-native-nitro-player/android/src/main/java/com/margelo/nitro/nitroplayer/core/TrackPlayerQueueBuild.kt
-index be44b28..729f24f 100644
+index be44b28..0e0b7ed 100644
 --- a/node_modules/react-native-nitro-player/android/src/main/java/com/margelo/nitro/nitroplayer/core/TrackPlayerQueueBuild.kt
 +++ b/node_modules/react-native-nitro-player/android/src/main/java/com/margelo/nitro/nitroplayer/core/TrackPlayerQueueBuild.kt
 @@ -3,6 +3,7 @@
@@ -237,8 +237,88 @@ index be44b28..729f24f 100644
      exo.prepare()
  }
  
+@@ -248,10 +250,7 @@ internal fun TrackPlayerCore.updatePlayerQueue(tracks: List<TrackItem>) {
+ 
+ // ── MediaItem construction (member extension to access downloadManager) ────
+ 
+-internal fun TrackPlayerCore.makeMediaItem(
+-    track: TrackItem,
+-    customMediaId: String? = null,
+-): MediaItem {
++internal fun TrackPlayerCore.mediaMetadataFor(track: TrackItem): MediaMetadata {
+     val metaBuilder =
+         MediaMetadata
+             .Builder()
+@@ -265,6 +264,14 @@ internal fun TrackPlayerCore.makeMediaItem(
+         } catch (_: Exception) {
+         }
+     }
++    return metaBuilder.build()
++}
++
++internal fun TrackPlayerCore.makeMediaItem(
++    track: TrackItem,
++    customMediaId: String? = null,
++): MediaItem {
++    val metadata = mediaMetadataFor(track)
+ 
+     // The receiver fetches media itself, so local download paths are unplayable there — cast uses the remote URL.
+     val effectiveUrl = if (isCastingField) track.url else downloadManager.getEffectiveUrl(track)
+@@ -292,10 +299,51 @@ internal fun TrackPlayerCore.makeMediaItem(
+         .Builder()
+         .setMediaId(customMediaId ?: track.id)
+         .setUri(effectiveUrl)
+-        .setMediaMetadata(metaBuilder.build())
++        .setMediaMetadata(metadata)
+         .build()
+ }
+ 
++internal fun TrackPlayerCore.findQueueTrack(trackId: String): TrackItem? {
++    currentTracks.find { it.id == trackId }?.let { return it }
++    playNextStack.find { it.id == trackId }?.let { return it }
++    upNextQueue.find { it.id == trackId }?.let { return it }
++    return null
++}
++
++internal fun TrackPlayerCore.mediaItemMetadataStale(item: MediaItem, track: TrackItem): Boolean {
++    val meta = item.mediaMetadata
++    if (meta.title?.toString() != track.title) return true
++    if ((meta.artist?.toString() ?: "") != track.artist) return true
++    if ((meta.albumTitle?.toString() ?: "") != track.album) return true
++    val existingArt = meta.artworkUri
++    val newArt = track.artwork?.asSecondOrNull()?.let { Uri.parse(it) }
++    return existingArt != newArt
++}
++
++/** Same prepared URI, new title/artist/artwork — do not rebuild the gapless window. */
++internal fun TrackPlayerCore.refreshWindowMetadata() {
++    if (!isExoInitialized) return
++    for (i in 0 until exo.mediaItemCount) {
++        val existing = exo.getMediaItemAt(i)
++        val track = findQueueTrack(extractTrackId(existing.mediaId)) ?: continue
++        if (!mediaItemMetadataStale(existing, track)) continue
++        // Keep the already-prepared URI so a language/theme update cannot restart the file.
++        val uri = existing.localConfiguration?.uri
++        val replacement =
++            if (uri != null) {
++                MediaItem
++                    .Builder()
++                    .setMediaId(mediaIdFor(track))
++                    .setUri(uri)
++                    .setMediaMetadata(mediaMetadataFor(track))
++                    .build()
++            } else {
++                makeMediaItem(track, mediaIdFor(track))
++            }
++        exo.replaceMediaItem(i, replacement)
++    }
++}
++
+ // ── Track lookup helpers ───────────────────────────────────────────────────
+ 
+ internal fun TrackPlayerCore.findTrack(mediaItem: MediaItem?): TrackItem? {
 diff --git a/node_modules/react-native-nitro-player/android/src/main/java/com/margelo/nitro/nitroplayer/core/TrackPlayerUrlLoader.kt b/node_modules/react-native-nitro-player/android/src/main/java/com/margelo/nitro/nitroplayer/core/TrackPlayerUrlLoader.kt
-index d03f213..90c4b78 100644
+index d03f213..cac3892 100644
 --- a/node_modules/react-native-nitro-player/android/src/main/java/com/margelo/nitro/nitroplayer/core/TrackPlayerUrlLoader.kt
 +++ b/node_modules/react-native-nitro-player/android/src/main/java/com/margelo/nitro/nitroplayer/core/TrackPlayerUrlLoader.kt
 @@ -24,7 +24,8 @@ internal fun TrackPlayerCore.updateTracksOnQueue(tracks: List<TrackItem>) {
@@ -251,30 +331,14 @@ index d03f213..90c4b78 100644
  
                      // preserve gapless
                      track.id == currentTrackId && currentTrackIsEmpty -> track.url.isNotEmpty()
-@@ -70,6 +71,26 @@ internal fun TrackPlayerCore.updateTracksOnQueue(tracks: List<TrackItem>) {
+@@ -70,6 +71,10 @@ internal fun TrackPlayerCore.updateTracksOnQueue(tracks: List<TrackItem>) {
              }
  
              rebuildQueueFromCurrentPosition()
 +
-+            val metadataUpdate = currentTrackId?.let { id -> currentTracks.find { it.id == id } }
-+            if (
-+                !currentTrackResolvedNow &&
-+                metadataUpdate != null &&
-+                currentTrackUpdate != null &&
-+                currentTrackUpdate.url == currentTrack?.url
-+            ) {
-+                val exoIndex = exo.currentMediaItemIndex
-+                if (exoIndex >= 0) {
-+                    val playlistId = currentPlaylistId ?: ""
-+                    val mediaId =
-+                        if (playlistId.isNotEmpty()) {
-+                            "$playlistId:${metadataUpdate.id}"
-+                        } else {
-+                            metadataUpdate.id
-+                        }
-+                    exo.replaceMediaItem(exoIndex, makeMediaItem(metadataUpdate, mediaId))
-+                }
-+            }
++            // Same-id prefix rebuild keeps buffered upcoming items, so language/artwork
++            // changes never reached the 4-item window. Replace any stale metadata in place.
++            refreshWindowMetadata()
          }
      }
  }
@@ -871,7 +935,7 @@ index d02bb11..3ff3218 100644
      }
    }
 diff --git a/node_modules/react-native-nitro-player/ios/core/TrackPlayerCore.swift b/node_modules/react-native-nitro-player/ios/core/TrackPlayerCore.swift
-index 50df2f2..5425c9e 100644
+index 50df2f2..d02a707 100644
 --- a/node_modules/react-native-nitro-player/ios/core/TrackPlayerCore.swift
 +++ b/node_modules/react-native-nitro-player/ios/core/TrackPlayerCore.swift
 @@ -56,6 +56,12 @@ class TrackPlayerCore: NSObject {
@@ -887,6 +951,34 @@ index 50df2f2..5425c9e 100644
    internal var boundaryTimeObserver: Any?
    internal var currentItemObservers: [NSKeyValueObservation] = []
  
+@@ -295,11 +301,26 @@ extension Array {
+   }
+ }
+ 
+-// Associated object for AVPlayerItem trackId
++// Associated objects so language/artwork updates can detect stale AVPlayerItems by more than id.
+ private var trackIdKey: UInt8 = 0
++private var trackTitleKey: UInt8 = 0
++private var trackArtistKey: UInt8 = 0
++private var trackArtworkUrlKey: UInt8 = 0
+ extension AVPlayerItem {
+   var trackId: String? {
+     get { objc_getAssociatedObject(self, &trackIdKey) as? String }
+     set { objc_setAssociatedObject(self, &trackIdKey, newValue, .OBJC_ASSOCIATION_RETAIN_NONATOMIC) }
+   }
++  var trackTitle: String? {
++    get { objc_getAssociatedObject(self, &trackTitleKey) as? String }
++    set { objc_setAssociatedObject(self, &trackTitleKey, newValue, .OBJC_ASSOCIATION_RETAIN_NONATOMIC) }
++  }
++  var trackArtist: String? {
++    get { objc_getAssociatedObject(self, &trackArtistKey) as? String }
++    set { objc_setAssociatedObject(self, &trackArtistKey, newValue, .OBJC_ASSOCIATION_RETAIN_NONATOMIC) }
++  }
++  var trackArtworkUrl: String? {
++    get { objc_getAssociatedObject(self, &trackArtworkUrlKey) as? String }
++    set { objc_setAssociatedObject(self, &trackArtworkUrlKey, newValue, .OBJC_ASSOCIATION_RETAIN_NONATOMIC) }
++  }
+ }
 diff --git a/node_modules/react-native-nitro-player/ios/core/TrackPlayerListener.swift b/node_modules/react-native-nitro-player/ios/core/TrackPlayerListener.swift
 index 302aebf..895758b 100644
 --- a/node_modules/react-native-nitro-player/ios/core/TrackPlayerListener.swift
@@ -1024,6 +1116,115 @@ index 00514ae..c5608bb 100644
    }
    func seekBy(offset: Double) async {
      await withPlayerQueueNoThrow { self.seekByOnQueue(offset: offset) }
+diff --git a/node_modules/react-native-nitro-player/ios/core/TrackPlayerQueueBuild.swift b/node_modules/react-native-nitro-player/ios/core/TrackPlayerQueueBuild.swift
+index 73f79ff..4a680e2 100644
+--- a/node_modules/react-native-nitro-player/ios/core/TrackPlayerQueueBuild.swift
++++ b/node_modules/react-native-nitro-player/ios/core/TrackPlayerQueueBuild.swift
+@@ -11,6 +11,40 @@ import Foundation
+ 
+ extension TrackPlayerCore {
+ 
++  func artworkUrlString(for track: TrackItem) -> String? {
++    if let artwork = track.artwork, case .second(let url) = artwork {
++      return url
++    }
++    return nil
++  }
++
++  func bindTrackMetadata(_ item: AVPlayerItem, track: TrackItem) {
++    item.trackId = track.id
++    item.trackTitle = track.title
++    item.trackArtist = track.artist
++    item.trackArtworkUrl = artworkUrlString(for: track)
++    // AVPlayerItem otherwise surfaces ID3 tags; lock-screen / CarPlay queue would ignore JS titles.
++    let title = AVMutableMetadataItem()
++    title.identifier = .commonIdentifierTitle
++    title.value = track.title as NSString
++    title.extendedLanguageTag = "und"
++    let artist = AVMutableMetadataItem()
++    artist.identifier = .commonIdentifierArtist
++    artist.value = track.artist as NSString
++    artist.extendedLanguageTag = "und"
++    let album = AVMutableMetadataItem()
++    album.identifier = .commonIdentifierAlbumName
++    album.value = track.album as NSString
++    album.extendedLanguageTag = "und"
++    item.externalMetadata = [title, artist, album]
++  }
++
++  func playerItemMetadataStale(_ item: AVPlayerItem, track: TrackItem) -> Bool {
++    item.trackTitle != track.title
++      || item.trackArtist != track.artist
++      || item.trackArtworkUrl != artworkUrlString(for: track)
++  }
++
+   /// Cancels an item's outstanding asset loading before it is released.
+   ///
+   /// `AVURLAsset.dealloc` blocks the deallocating thread inside `URLAssetFinalize`
+@@ -373,13 +407,16 @@ extension TrackPlayerCore {
+ 
+     // Fast-path: nothing to do if queue already matches
+     if existingIds == desiredIds {
+-      if let changedIds = changedTrackIds {
++      let metadataStale = zip(upcomingItems, newQueueTracks).contains { item, track in
++        playerItemMetadataStale(item, track: track)
++      }
++      if let changedIds = changedTrackIds, !metadataStale {
+         if Set(existingIds).isDisjoint(with: changedIds) {
+           NitroPlayerLogger.log("TrackPlayerCore",
+             "✅ Queue matches & no buffered URLs changed — preserving \(existingIds.count) items for gapless")
+           return
+         }
+-      } else {
++      } else if changedTrackIds == nil && !metadataStale {
+         NitroPlayerLogger.log("TrackPlayerCore",
+           "✅ Queue already matches desired order — preserving \(existingIds.count) items for gapless")
+         return
+@@ -390,16 +427,19 @@ extension TrackPlayerCore {
+     if let changedIds = changedTrackIds {
+       var reusableByTrackId: [String: AVPlayerItem] = [:]
+       for item in upcomingItems {
+-        if let trackId = item.trackId, !changedIds.contains(trackId) {
+-          reusableByTrackId[trackId] = item
+-        }
++        guard let trackId = item.trackId, !changedIds.contains(trackId) else { continue }
++        // Only reuse if this item is still the desired upcoming row and title/art match.
++        // A leftover id not in newQueueTracks used to stay in the AV queue.
++        guard let track = newQueueTracks.first(where: { $0.id == trackId }),
++          !playerItemMetadataStale(item, track: track)
++        else { continue }
++        reusableByTrackId[trackId] = item
+       }
+ 
+-      let desiredIdSet = Set(desiredIds)
+       for item in upcomingItems {
+-        guard let trackId = item.trackId else { continue }
+-        if changedIds.contains(trackId) || !desiredIdSet.contains(trackId) {
++        guard let trackId = item.trackId, reusableByTrackId[trackId] === item else {
+           player.remove(item)
++          continue
+         }
+       }
+ 
+@@ -429,7 +469,8 @@ extension TrackPlayerCore {
+     var commonPrefix = 0
+     while commonPrefix < upcomingItems.count,
+       commonPrefix < newQueueTracks.count,
+-      upcomingItems[commonPrefix].trackId == newQueueTracks[commonPrefix].id
++      upcomingItems[commonPrefix].trackId == newQueueTracks[commonPrefix].id,
++      !playerItemMetadataStale(upcomingItems[commonPrefix], track: newQueueTracks[commonPrefix])
+     {
+       commonPrefix += 1
+     }
+@@ -560,7 +601,7 @@ extension TrackPlayerCore {
+     item.preferredForwardBufferDuration = 0
+ 
+     item.canUseNetworkResourcesForLiveStreamingWhilePaused = true
+-    item.trackId = track.id
++    bindTrackMetadata(item, track: track)
+ 
+     // Deliberately NOT calling loadValuesAsynchronously here.
+     //
 diff --git a/node_modules/react-native-nitro-player/ios/core/TrackPlayerRecovery.swift b/node_modules/react-native-nitro-player/ios/core/TrackPlayerRecovery.swift
 index 8282204..35fd86c 100644
 --- a/node_modules/react-native-nitro-player/ios/core/TrackPlayerRecovery.swift

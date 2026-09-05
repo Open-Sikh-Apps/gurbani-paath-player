@@ -38,8 +38,8 @@ while IFS= read -r rel; do
   put_object "$rel" "$UPLOAD_DIR/$rel" "audio/mpeg"
 done < <(find audio -type f -name '*.mp3' | sort)
 
-if [[ -f "$UPLOAD_DIR/images/sggsj-light.jpg" ]]; then
-  put_object "images/sggsj-light.jpg" "$UPLOAD_DIR/images/sggsj-light.jpg" "image/jpeg"
+if [[ -f "$UPLOAD_DIR/images/sggsj-light-2.jpg" ]]; then
+  put_object "images/sggsj-light-2.jpg" "$UPLOAD_DIR/images/sggsj-light-2.jpg" "image/jpeg"
 fi
 if [[ -f "$UPLOAD_DIR/images/sggsj-dark.jpg" ]]; then
   put_object "images/sggsj-dark.jpg" "$UPLOAD_DIR/images/sggsj-dark.jpg" "image/jpeg"

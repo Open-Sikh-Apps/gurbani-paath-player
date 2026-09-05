@@ -93,6 +93,9 @@ export function createNitroPlayerEngine(): PlayerEngine {
       showInNotification: true,
       remoteSkipForwardInterval: REMOTE_SKIP_SEC,
       remoteSkipBackwardInterval: REMOTE_SKIP_SEC,
+      // Native `onTracksNeedUpdate` when a track.url is empty — not the lock-screen window
+      // (that is hardcoded QUEUE_WINDOW_SIZE = 4). This app always sends URLs, so the
+      // callback never fires; 1 matches "do not ask JS to fill a window of empties."
       lookaheadCount: 1,
       // PlayerConfig has no extra flags; native configure parses this token.
       androidNotificationIcon: [

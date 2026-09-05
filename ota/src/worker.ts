@@ -1,5 +1,13 @@
+import { shouldSkipRemoteUpdate } from "../../src/updates/launch-hash";
+
 type Env = {
   BUCKET: R2Bucket;
+};
+
+type ProtocolManifest = {
+  id?: string;
+  runtimeVersion?: string;
+  launchAsset?: { hash?: string };
 };
 
 const PROTOCOL_HEADERS = {
@@ -98,14 +106,20 @@ export default {
     if (!object) {
       return noUpdate();
     }
-    const manifest = (await object.json()) as { id?: string; runtimeVersion?: string };
+    const manifest = (await object.json()) as ProtocolManifest;
     // Same R2 prefix as the request, but the JSON may have been written for another native runtime.
     if (manifest.runtimeVersion && manifest.runtimeVersion !== runtimeVersion) {
       return noUpdate();
     }
-    const currentId = request.headers.get("expo-current-update-id");
-    // Already running this bundle — skip so the client does not re-download.
-    if (currentId && manifest.id === currentId) {
+    // Id match: already running this publish. Hash match: extra-param launchHash
+    // from a downloaded OTA whose Hermes bytes match (ids can still differ).
+    if (
+      shouldSkipRemoteUpdate({
+        currentUpdateId: request.headers.get("expo-current-update-id"),
+        extraParamsHeader: request.headers.get("expo-extra-params"),
+        manifest,
+      })
+    ) {
       return noUpdate();
     }
     return multipart([

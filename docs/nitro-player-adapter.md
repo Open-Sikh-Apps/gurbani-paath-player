@@ -111,7 +111,7 @@ Ignore if native track id is not in session; ignore if still in the ignore windo
 
 Same session guard, then set the ignore window from the new position, persist immediately (user scrubbed).
 
-Language change: `updateTracks` with new titles/artists (same urls). The native patch allows title refresh on the current item.
+Language change: `updateTracks` with new titles/artists (same urls). The native patch allows title refresh on the current item and the upcoming window (next 4). Theme change uses the same path for artwork URLs.
 
 ---
 

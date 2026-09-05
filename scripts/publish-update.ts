@@ -11,6 +11,8 @@ import {
   type FingerprintSource,
 } from "expo/fingerprint";
 
+import { otaCreatedAt, uuidFromSha256Hex } from "../src/updates/launch-hash";
+
 type PlatformMeta = {
   bundle: string;
   assets: { path: string; ext: string }[];
@@ -112,6 +114,28 @@ function readAppJsonExpo(): {
 function sha256Base64Url(buf: Buffer): string {
   // Expo Updates protocol hash (base64url), not hex.
   return createHash("sha256").update(buf).digest("base64url");
+}
+
+function uuidFromLaunchHash(hash: string): string {
+  const hex = createHash("sha256").update(`ota-launch:${hash}`).digest("hex");
+  return uuidFromSha256Hex(hex);
+}
+
+function publishCreatedAt(): string {
+  let dirty = true;
+  let gitCommitIso: string | null = null;
+  try {
+    dirty =
+      execSync("git status --porcelain", { cwd: ROOT, encoding: "utf8" }).trim()
+        .length > 0;
+    gitCommitIso = execSync("git log -1 --format=%cI", {
+      cwd: ROOT,
+      encoding: "utf8",
+    }).trim();
+  } catch {
+    // No git — fall through to wall clock.
+  }
+  return otaCreatedAt({ workingTreeDirty: dirty, gitCommitIso, nowMs: Date.now() });
 }
 
 function md5Hex(buf: Buffer): string {
@@ -337,13 +361,13 @@ function buildManifest(
   });
   return {
     manifest: {
-      // New id every publish — Expo treats this as a new update even if JS is identical.
-      id: randomUUID(),
-      createdAt: new Date().toISOString(),
+      // Same Hermes bytes → same id so the Worker can skip without a launch-hash extra param.
+      id: uuidFromLaunchHash(bundleHash),
+      createdAt: publishCreatedAt(),
       runtimeVersion: RUNTIME,
       launchAsset,
       assets,
-      metadata: { channel: CHANNEL },
+      metadata: { channel: CHANNEL, launchHash: bundleHash },
       // After a downloaded update, Constants.expoConfig is extra.expoClient — not the embedded app.json.
       extra: { expoClient: APP_JSON.expoClient },
     },
@@ -401,6 +425,7 @@ async function main(): Promise<void> {
       putNativeFingerprint(platform, fingerprint);
     }
     console.log(`published ${platform} runtime ${RUNTIME} ${manifest.id as string}`);
+    console.log(`  createdAt ${manifest.createdAt as string}`);
     console.log(`  check ${PUBLIC_URL}  files ${FILES_URL}/${prefix}/`);
   }
 }

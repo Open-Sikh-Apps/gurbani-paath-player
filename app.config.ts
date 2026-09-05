@@ -63,9 +63,9 @@ export default ({ config }: ConfigContext): ExpoConfig => {
       ...config.android,
       package: process.env.APP_VARIANT === "development" ? "com.opensikhapps.gurbaniaudioplayer.dev" : config.android?.package ?? "com.opensikhapps.gurbaniaudioplayer",
       googleServicesFile: process.env.APP_VARIANT === "development" ? "./google-services-dev.json" : config.android?.googleServicesFile ?? "./google-services.json",
-      // Full-bleed illustration; cream fill matches the light art at the adaptive mask.
+      // Foreground is inset to the 66% adaptive safe zone so the launcher mask does not crop the art.
       adaptiveIcon: {
-        foregroundImage: "./assets/icon-light.png",
+        foregroundImage: "./assets/android-icon-foreground.png",
         backgroundColor: palette.light.bg,
       },
       intentFilters: [

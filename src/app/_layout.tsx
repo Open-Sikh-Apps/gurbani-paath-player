@@ -87,6 +87,8 @@ export default function RootLayout() {
   const isDark = useIsDark();
   const colors = useThemeColors();
   const [ready, setReady] = useState(catalogueReady);
+  // Stay mounted through the fade so Home paints under the splash instead of popping in.
+  const [splashHeld, setSplashHeld] = useState(!catalogueReady);
   const online = useIsOnline();
   const navigationBarStyle = isDark ? "light" : "dark";
   // Invert status-bar icons while offline so they stay readable on the accent banner.
@@ -246,65 +248,59 @@ export default function RootLayout() {
   );
 
   // Native splash is already hidden; this spinner holds first paint until hydrate + OTA gate. Must not return null — that dropped Stack on remount.
-  if (!ready) {
-    return (
-      <CrashErrorBoundary>
-        <ThemeProvider value={navigationTheme(isDark, colors)}>
-          <View className="flex-1">
-            <JsSplash />
-            {chrome}
-          </View>
-        </ThemeProvider>
-      </CrashErrorBoundary>
-    );
-  }
-
   return (
     <CrashErrorBoundary>
       <ThemeProvider value={navigationTheme(isDark, colors)}>
-        <OfflineChrome>
-          <View className={cn("flex-1", ui.page)}>
-            <PlaybackKeepAwake />
-            <Stack
-              screenOptions={{
-                headerShown: false,
-              }}
-            >
-              <Stack.Protected guard={!hasCompletedWizard}>
-                <Stack.Screen name="wizard" />
-              </Stack.Protected>
-              <Stack.Protected guard={hasCompletedWizard}>
-                <Stack.Screen name="(tabs)" />
-                <Stack.Screen
-                  name="settings"
-                  options={{
-                    presentation: "fullScreenModal",
+        <View className="flex-1">
+          {ready ? (
+            <OfflineChrome>
+              <View className={cn("flex-1", ui.page)}>
+                <PlaybackKeepAwake />
+                <Stack
+                  screenOptions={{
                     headerShown: false,
                   }}
-                />
-                <Stack.Screen
-                  name="now-playing"
-                  options={{
-                    presentation: "fullScreenModal",
-                    headerShown: false,
-                  }}
-                />
-                <Stack.Screen
-                  name="bookmarks"
-                  options={{
-                    presentation: "fullScreenModal",
-                    headerShown: false,
-                  }}
-                />
-              </Stack.Protected>
-            </Stack>
-            <FlushNotificationOpens />
-            <DownloadToastBridge />
-            <CrashLastRunNotice />
-            <OtaApplyingOverlay />
-            {chrome}
-          </View>
-        </OfflineChrome>
+                >
+                  <Stack.Protected guard={!hasCompletedWizard}>
+                    <Stack.Screen name="wizard" />
+                  </Stack.Protected>
+                  <Stack.Protected guard={hasCompletedWizard}>
+                    <Stack.Screen name="(tabs)" />
+                    <Stack.Screen
+                      name="settings"
+                      options={{
+                        presentation: "fullScreenModal",
+                        headerShown: false,
+                      }}
+                    />
+                    <Stack.Screen
+                      name="now-playing"
+                      options={{
+                        presentation: "fullScreenModal",
+                        headerShown: false,
+                      }}
+                    />
+                    <Stack.Screen
+                      name="bookmarks"
+                      options={{
+                        presentation: "fullScreenModal",
+                        headerShown: false,
+                      }}
+                    />
+                  </Stack.Protected>
+                </Stack>
+                <FlushNotificationOpens />
+                <DownloadToastBridge />
+                <CrashLastRunNotice />
+                <OtaApplyingOverlay />
+              </View>
+            </OfflineChrome>
+          ) : null}
+          {splashHeld ? (
+            <JsSplash hold={!ready} onHidden={() => setSplashHeld(false)} />
+          ) : null}
+          {chrome}
+        </View>
       </ThemeProvider>
     </CrashErrorBoundary>
   );

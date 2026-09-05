@@ -48,6 +48,13 @@ export function initNetwork(): void {
   }
   started = true;
   firstSnapshot = NetInfo.fetch().then((state) => {
+    const next = fromNetInfo(state);
+    // Airplane / already-offline at launch is not a blip — apply now so splash and the banner agree.
+    if (!next.online) {
+      commitOffline.cancel();
+      useNetworkStore.setState(next);
+      return;
+    }
     applyNetInfo(state);
   });
   NetInfo.addEventListener((state) => {

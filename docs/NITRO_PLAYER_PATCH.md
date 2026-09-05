@@ -46,7 +46,7 @@ Android can show a failed state on the shade/lock screen (platform error code na
 
 ### Language change without restarting the file
 
-`updateTracks` used to ignore the current item unless the URL was empty. Same URL, new title/artist/artwork (UI language) now updates Now Playing / the media session without rebuilding the live queue.
+`updateTracks` used to ignore the current item unless the URL was empty. Same URL, new title/artist/artwork (UI language or theme) now updates Now Playing / the media session without rebuilding the live queue. The gapless window (next 4 items) is refreshed in place so upcoming lock-screen / notification rows do not keep the old language or album art.
 
 ### Android swipe-kill relaunch (PlaylistManager)
 

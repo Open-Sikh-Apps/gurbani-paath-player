@@ -109,6 +109,40 @@ function batchSnapshotsFromFiles(
   return batches;
 }
 
+function asPersistedFiles(
+  persisted: unknown,
+  fallback: Record<string, DownloadFile>,
+): Record<string, DownloadFile> {
+  if (!persisted || typeof persisted !== "object" || !("files" in persisted)) {
+    return fallback;
+  }
+  const raw = persisted.files;
+  if (!raw || typeof raw !== "object" || Array.isArray(raw)) {
+    return fallback;
+  }
+  const files: Record<string, DownloadFile> = {};
+  for (const [key, value] of Object.entries(raw)) {
+    if (!value || typeof value !== "object") {
+      continue;
+    }
+    const file = value as DownloadFile;
+    // Skip corrupt MMKV rows so hydrate cannot throw and leave hasHydrated false.
+    if (
+      typeof file.trackId !== "string" ||
+      typeof file.status !== "string" ||
+      typeof file.albumId !== "string" ||
+      typeof file.remoteUrl !== "string"
+    ) {
+      continue;
+    }
+    files[key] = file;
+  }
+  if (Object.keys(raw).length > 0 && Object.keys(files).length === 0) {
+    return fallback;
+  }
+  return files;
+}
+
 export const useDownloadStore = create<DownloadsState>()(
   persist(
     (set, get) => ({
@@ -204,14 +238,15 @@ export const useDownloadStore = create<DownloadsState>()(
       storage: createJSONStorage(() => downloadsStateStorage),
       // Progress and batches are derived. Persisting them would fight the engine after a swipe-kill.
       partialize: (state) => ({ files: state.files }),
-      onRehydrateStorage: () => (state) => {
-        if (!state) {
-          return;
-        }
-        useDownloadStore.setState({
-          ...indexesFromFiles(state.files),
-          batches: batchSnapshotsFromFiles(state.files),
-        });
+      merge: (persisted, current) => {
+        const files = asPersistedFiles(persisted, current.files);
+        // Indexes must land in the same replace-merge as `files` or the banner reads hasCompleted: false.
+        return {
+          ...current,
+          files,
+          ...indexesFromFiles(files),
+          batches: batchSnapshotsFromFiles(files),
+        };
       },
     },
   ),

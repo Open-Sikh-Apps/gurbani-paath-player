@@ -15,7 +15,7 @@
       "en": "./src/i18n/native-metadata/en.json",
       "pa": "./src/i18n/native-metadata/pa.json"
     },
-    "runtimeVersion": "1.0.2",
+    "runtimeVersion": "1.0.3",
     "updates": {
       "url": "https://updatesgurbaniaudioplayer.opensikhapps.com",
       "checkAutomatically": "NEVER",
@@ -41,7 +41,7 @@
     "android": {
       "adaptiveIcon": {
         "backgroundColor": "#F7F0E4",
-        "foregroundImage": "./assets/icon-light.png"
+        "foregroundImage": "./assets/android-icon-foreground.png"
       },
       "predictiveBackGestureEnabled": false,
       "package": "com.opensikhapps.gurbaniaudioplayer",
