@@ -30,7 +30,11 @@ import {
 } from "@/downloads";
 import { useResolvedLocale } from "@/hooks/use-resolved-locale";
 import i18n from "@/i18n";
-import { initPlayback, setRemotePrimary as applyRemotePrimary } from "@/playback";
+import {
+  initPlayback,
+  restoreLastSession,
+  setRemotePrimary as applyRemotePrimary,
+} from "@/playback";
 import { usePreferencesStore } from "@/state/preferences-store";
 import { waitAppPersisted } from "@/state/wait-persisted";
 import { applyPendingAppUpdate, probeAppUpdate } from "@/updates/check";
@@ -119,9 +123,12 @@ export default function RootLayout() {
         await waitAppPersisted();
         await hydrateCatalogue();
         catalogueReady = true;
+        await restoreLastSession();
         // Don't hold the spinner on a slow Pages fetch; the store keeps refreshing after paint.
+        // Restore again if hydrate was bundled/cache-miss and Pages now has the album.
+        const refreshed = refreshCatalogue().then(() => restoreLastSession());
         await Promise.race([
-          refreshCatalogue(),
+          refreshed,
           new Promise<void>((resolve) => {
             setTimeout(resolve, CATALOGUE_REFRESH_SPLASH_MS);
           }),

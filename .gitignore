@@ -18,6 +18,10 @@ expo-env.d.ts
 *.key
 *.mobileprovision
 
+# Play upload keystore (local EAS credentials; never commit)
+credentials.json
+credentials/
+
 # Metro
 .metro-health-check*
 

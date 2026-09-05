@@ -4,8 +4,6 @@ Device checklist for the Play-bound **preview APK** (`runtimeVersion` `1.0.0`). 
 
 Install **this** APK. Uninstall the previous preview first. Android: set the app to **Unrestricted battery**.
 
-**Intended, not a bug:** swipe the app away from Recents while playing — the media notification stays. Tap it to return. Do not expect audio to stop on Recents swipe.
-
 Phase 6 Cloud sync and Phase 7 share/App Links **JS** are not in this binary. Native modules are linked; UI for those is a later OTA.
 
 ---
@@ -16,7 +14,7 @@ Phase 6 Cloud sync and Phase 7 share/App Links **JS** are not in this binary. Na
 - [x] Cold start: native splash is brief, then a **JS spinner** (“Loading…”). No Google account picker, no sign-in sheet, no Firestore prompt.
 - [x] If an OTA is waiting and nothing is playing: spinner, then **Update ready** dialog (OK only), then “Updating…”, then a possible short blank, then the app again. (except playing check)
 - [x] Status-bar / media notification small icon is the Asset Studio glyph (`ਗੁ`), not the old chevron.
-- [ ] Catalogue loads from Pages (not mock). Home lists sehaj paath by scripture, then reciter collections. No Gursikh portraits.
+- [x] Catalogue loads from Pages (not mock). Home lists sehaj paath by scripture, then reciter collections. No Gursikh portraits.
 
 **Fresh install (clear app data or new device):**
 
@@ -53,7 +51,6 @@ Stream a long track. Keep the notification shade / lock screen visible.
 - [x] Wi‑Fi ↔ cellular while streaming: audio keeps going.
 - [x] Airplane ~4s+: stream may keep playing from the native buffer; do not expect a JS pause on a brief drop.
 - [x] Incoming call: pause, then auto-resume when the call ends.
-- [ ] Recents swipe: notification stays; tap opens **Now Playing** (`gurbaniaudioplayer://now-playing`), not Home.
 - [x] Keep screen on (Settings / overflow) while playing or buffering.
 - [x] Play a **late** track from Home → Now Playing → album button → that row is on screen (`?trackId=`). Playback must **not** restart from 0.
 
@@ -90,9 +87,9 @@ Stream a long track. Keep the notification shade / lock screen visible.
 
 ## 6. Settings and feedback
 
-- [ ] **Give feedback** opens mail to `contact@opensikhapps.com` with app version and update id. If no mail app: address + version copied.
+- [x] **Give feedback** opens mail to `contact@opensikhapps.com` with app version and update id. If no mail app: address + version copied.
 - [x] Theme, language, Simple mode match wizard values.
-- [ ] **Check for update** (see §8). need to add snack bar
+- [x] **Check for update** (see §8). need to add snack bar
 
 ---
 

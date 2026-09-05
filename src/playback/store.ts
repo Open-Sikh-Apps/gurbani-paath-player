@@ -1,11 +1,27 @@
+import {
+  getCollectionById,
+  getReciterById,
+  getScriptureById,
+  getTrackInCollection,
+  loadCatalogue,
+} from "@/catalogue";
 import { getPlayerEngine } from "@/playback/engine";
 import { initSleepTimer } from "@/playback/sleep-timer";
-import { getSessionTrack, isLocalPlaybackUrl, withLocalUrls } from "@/playback/session";
+import {
+  getSessionTrack,
+  isLocalPlaybackUrl,
+  sessionFromCollection,
+  withLocalUrls,
+} from "@/playback/session";
 import { usePlaybackStore } from "@/playback/status-store";
+import {
+  getAlbumResume,
+  isEndedAlbumResume,
+} from "@/playback/resume-store";
 import type { LoadAlbumOptions, PlayerSession, RemotePrimary, SessionTrack } from "@/playback/types";
 import { isOnline, playableUrlFor } from "@/downloads";
 import i18n from "@/i18n";
-import { recordHistoryPlay } from "@/state/history-store";
+import { recordHistoryPlay, useHistoryStore } from "@/state/history-store";
 
 export { usePlaybackStore } from "@/playback/status-store";
 
@@ -38,6 +54,62 @@ export function trackAvailableOffline(track: SessionTrack): boolean {
     isLocalPlaybackUrl(track.url) ||
     playableUrlFor(track.id, track.remoteUrl) != null
   );
+}
+
+/** Rebuild the last album into native paused so the mini-player survives process death. */
+export async function restoreLastSession(): Promise<void> {
+  const engine = getPlayerEngine();
+  if (engine.getStatus().session) {
+    return;
+  }
+  // Newest listen, not a scan of resume.updatedAt — same album the mini-player had.
+  const albumId = useHistoryStore.getState().items[0]?.albumId;
+  if (!albumId) {
+    return;
+  }
+  const catalogue = loadCatalogue();
+  const collection = getCollectionById(catalogue, albumId);
+  if (!collection?.tracks.length) {
+    return;
+  }
+  const resume = getAlbumResume(albumId);
+  const resumeTrack = resume
+    ? getTrackInCollection(catalogue, albumId, resume.trackId)
+    : undefined;
+  const start = resumeTrack ?? collection.tracks[0];
+  if (!start) {
+    return;
+  }
+  const lastTrack = collection.tracks[collection.tracks.length - 1];
+  const ended =
+    resume != null &&
+    resumeTrack != null &&
+    isEndedAlbumResume(
+      resume,
+      lastTrack?.id,
+      resume.durationSec ??
+        ("durationSec" in start ? start.durationSec : undefined),
+      false,
+    );
+  const reciter = collection.reciterId
+    ? getReciterById(catalogue, collection.reciterId)
+    : undefined;
+  const scripture = collection.scriptureId
+    ? getScriptureById(catalogue, collection.scriptureId)
+    : undefined;
+  try {
+    // loadAlbum only — playAlbum would autoplay after a kill from a call / other app.
+    await engine.loadAlbum(
+      withLocalUrls(sessionFromCollection(collection, reciter, scripture)),
+      {
+        trackId: start.id,
+        positionSec:
+          ended || !resume || !resumeTrack ? 0 : resume.positionSec,
+      },
+    );
+  } catch {
+    // Mini-player stays hidden; album and history resume still work.
+  }
 }
 
 /** Loads and plays. Returns false while offline with no file — caller must not open Now Playing. */

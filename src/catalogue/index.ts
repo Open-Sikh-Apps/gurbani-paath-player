@@ -46,7 +46,7 @@ export {
 
 // Some CDNs 403 Expo's default image User-Agent; this identifies the app and a contact.
 export const REMOTE_IMAGE_HEADERS = {
-  "User-Agent": "GurbaniAudioPlayer/1.0 (cingh.jasdeep@gmail.com)",
+  "User-Agent": "GurbaniAudioPlayer/1.0 (contact@opensikhapps.com)",
 };
 
 /** Snapshot without a hook so playback can read IDs off the render cycle. */

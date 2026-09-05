@@ -7,7 +7,7 @@ import { trackByteSizeSchema } from "../src/catalogue/schema";
 const CONCURRENCY = 6;
 const TIMEOUT_MS = 8_000;
 const USER_AGENT =
-  "GurbaniAudioPlayer/1.0 (cingh.jasdeep@gmail.com)";
+  "GurbaniAudioPlayer/1.0 (contact@opensikhapps.com)";
 
 const recordedKindSchema = v.picklist(["sehaj_paath", "audiobook"]);
 

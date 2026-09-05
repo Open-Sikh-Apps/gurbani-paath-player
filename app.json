@@ -15,7 +15,7 @@
       "en": "./src/i18n/native-metadata/en.json",
       "pa": "./src/i18n/native-metadata/pa.json"
     },
-    "runtimeVersion": "1.0.0",
+    "runtimeVersion": "1.0.1",
     "updates": {
       "url": "https://updatesgurbaniaudioplayer.opensikhapps.com",
       "checkAutomatically": "NEVER",
@@ -47,25 +47,9 @@
       },
       "predictiveBackGestureEnabled": false,
       "package": "com.opensikhapps.gurbaniaudioplayer",
+      "versionCode": 1,
       "googleServicesFile": "./google-services.json",
       "allowBackup": false,
-      "intentFilters": [
-        {
-          "action": "VIEW",
-          "autoVerify": true,
-          "data": [
-            {
-              "scheme": "https",
-              "host": "gurbaniaudioplayer.opensikhapps.com",
-              "pathPrefix": "/a"
-            }
-          ],
-          "category": [
-            "BROWSABLE",
-            "DEFAULT"
-          ]
-        }
-      ],
       "permissions": [
         "android.permission.FOREGROUND_SERVICE",
         "android.permission.FOREGROUND_SERVICE_MEDIA_PLAYBACK",

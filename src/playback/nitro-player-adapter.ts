@@ -158,6 +158,11 @@ export function createNitroPlayerEngine(): PlayerEngine {
           if (albumEnded) {
             return;
           }
+          // Audio-focus / service death is not a Play tap. Native shouldResume
+          // still runs when ExoPlayer is alive (restore is then a no-op).
+          if (isNativePlaybackDead(await readNativeState())) {
+            wantsPlaying = false;
+          }
           await restoreNativeIfDead();
         });
       }
@@ -271,6 +276,8 @@ export function createNitroPlayerEngine(): PlayerEngine {
           }
         } else if (nativeState === "playing") {
           lastError = null;
+          // Native shouldResume after a call never goes through engine.play().
+          wantsPlaying = true;
         } else if (nativeState === "buffering" && isOfflineStreamNow()) {
           // Stall after the buffer empties — do not JS-pause while native is still playing.
           lastError = i18n.t("player.offlineStreamError");

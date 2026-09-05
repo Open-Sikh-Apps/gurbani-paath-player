@@ -30,6 +30,7 @@ export {
   initPlayback,
   pausePlayback,
   playAlbum,
+  restoreLastSession,
   trackAvailableOffline,
   seekBy,
   seekTo,
